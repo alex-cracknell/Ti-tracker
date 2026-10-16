@@ -16,21 +16,6 @@ A small phone app for tracking blood pressure, pulse, weight and (optionally) sy
 | `sw.js` | Makes it work offline |
 | `icon-*.png`, `apple-touch-icon.png` | Home-screen icons |
 
-## Put it online (pick one, both free)
-
-It has to be served over **https** for install and offline mode to work. Opening `index.html` straight from your phone's file manager won't give you those.
-
-### Option A: Netlify Drop (about 2 minutes, no account needed to try)
-1. On a computer, go to **app.netlify.com/drop**.
-2. Unzip this folder and drag the whole folder onto the page.
-3. You get a link like `https://something-random.netlify.app`. Sign up (free) to keep it permanently and rename it, e.g. `titration-tracker.netlify.app`.
-
-### Option B: GitHub Pages (best if you want others to find and improve it)
-1. Create a free GitHub account and a new **public** repository, e.g. `titration-tracker`.
-2. Click **Add file → Upload files** and upload everything in this folder.
-3. Go to **Settings → Pages**, set Source to **Deploy from a branch**, branch **main**, folder **/ (root)**, and save.
-4. After a minute your app is at `https://<your-username>.github.io/titration-tracker/`.
-
 ## Install on a phone
 - **iPhone (Safari):** open the link, tap **Share → Add to Home Screen**.
 - **Android (Chrome):** open the link, tap **⋮ → Install app** (or Add to Home screen).
