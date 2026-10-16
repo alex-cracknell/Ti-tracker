@@ -1,0 +1,1067 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#F2F4F8" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0E121B" media="(prefers-color-scheme: dark)">
+<meta name="description" content="Track blood pressure, pulse, weight and symptoms while starting ADHD medication. Data stays on your phone.">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Titration">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);color-scheme:light}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
+<script>window.TT_STANDALONE = true;</script>
+<title>Titration Tracker</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=IBM+Plex+Mono:wght@500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+/* Layout: single-column phone app, sticky header, bottom tab bar, bottom-sheet forms. Mode (titration/stable) is carried by colour. */
+:root{
+  --paper:#F2F4F8; --card:#FFFFFF; --ink:#1A2130; --muted:#5B6478; --line:#DCE1EA; --soft:#E8ECF3;
+  --accent:#3445A6; --accent-ink:#FFFFFF; --accent-soft:#E4E8FA;
+  --titr:#A35F0C; --titr-soft:#FBEFDD; --stable:#2C7A57; --stable-soft:#E0F2E9;
+  --warn:#B9470F; --warn-soft:#FDEBE1; --danger:#B42318; --danger-soft:#FDE4E2; --ok:#2C7A57;
+  --c-sys:#3445A6; --c-dia:#8A97DA; --c-pulse:#C0446B; --c-weight:#2C7A57; --c-score:#A35F0C;
+  --f-display:"Bricolage Grotesque", "Avenir Next", "Segoe UI", system-ui, sans-serif;
+  --f-body:"IBM Plex Sans", -apple-system, "Segoe UI", Roboto, system-ui, sans-serif;
+  --f-mono:"IBM Plex Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  --r:14px;
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
+  --paper:#0E121B; --card:#171D2A; --ink:#E5E8EF; --muted:#9AA3B6; --line:#2A3245; --soft:#20283A;
+  --accent:#8C9BF2; --accent-ink:#0E121B; --accent-soft:#232C4D;
+  --titr:#E8A04A; --titr-soft:#33260F; --stable:#5FC492; --stable-soft:#132D22;
+  --warn:#F28C55; --warn-soft:#3A2015; --danger:#F57B70; --danger-soft:#3D1715; --ok:#5FC492;
+  --c-sys:#8C9BF2; --c-dia:#4E5CA8; --c-pulse:#EC7A9C; --c-weight:#5FC492; --c-score:#E8A04A;
+  color-scheme:dark }}
+:root[data-theme="dark"]{
+  --paper:#0E121B; --card:#171D2A; --ink:#E5E8EF; --muted:#9AA3B6; --line:#2A3245; --soft:#20283A;
+  --accent:#8C9BF2; --accent-ink:#0E121B; --accent-soft:#232C4D;
+  --titr:#E8A04A; --titr-soft:#33260F; --stable:#5FC492; --stable-soft:#132D22;
+  --warn:#F28C55; --warn-soft:#3A2015; --danger:#F57B70; --danger-soft:#3D1715; --ok:#5FC492;
+  --c-sys:#8C9BF2; --c-dia:#4E5CA8; --c-pulse:#EC7A9C; --c-weight:#5FC492; --c-score:#E8A04A;
+  color-scheme:dark }
+body{background:var(--paper);color:var(--ink);font:15px/1.5 var(--f-body);-webkit-text-size-adjust:100%}
+body[data-mode="titration"]{--mode:var(--titr);--mode-soft:var(--titr-soft)}
+body[data-mode="stable"]{--mode:var(--stable);--mode-soft:var(--stable-soft)}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--paper)}
+*{box-sizing:border-box}
+button,input,select,textarea{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.wrap{max-width:560px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+
+/* header */
+.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--paper);border-bottom:1px solid var(--line)}
+.top .wrap{display:flex;align-items:center;gap:10px;padding-block:12px}
+.brand{font:700 19px/1.1 var(--f-display);letter-spacing:-.01em;flex:1;min-width:0}
+.brand small{display:block;font:500 11px/1.4 var(--f-body);color:var(--muted);letter-spacing:.06em;text-transform:uppercase;margin-top:2px}
+.pill{display:inline-flex;align-items:center;gap:6px;font:600 12px/1 var(--f-body);padding:6px 10px;border-radius:99px;background:var(--mode-soft);color:var(--mode);white-space:nowrap}
+.pill::before{content:"";width:7px;height:7px;border-radius:50%;background:currentColor}
+
+main{padding-block:16px 110px}
+.stack{display:flex;flex-direction:column;gap:14px}
+h2.sec{font:600 11px/1 var(--f-body);letter-spacing:.09em;text-transform:uppercase;color:var(--muted);margin:10px 0 0}
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:14px 16px}
+.card h3{font:700 17px/1.25 var(--f-display);margin:0 0 4px;text-wrap:balance}
+.muted{color:var(--muted)}
+.small{font-size:13px}
+p{margin:0}
+
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;border:0;border-radius:10px;padding:10px 16px;font-weight:600;cursor:pointer;background:var(--accent);color:var(--accent-ink);min-height:42px;text-decoration:none}
+.btn.ghost{background:var(--soft);color:var(--ink)}
+.btn.line{background:transparent;border:1px solid var(--line);color:var(--ink)}
+.btn.danger{background:var(--danger);color:#fff}
+.btn.sm{padding:6px 12px;min-height:34px;font-size:13px;border-radius:8px}
+.btn.block{width:100%}
+.btn:disabled{opacity:.5}
+.btns{display:flex;gap:8px;flex-wrap:wrap}
+
+/* demo banner */
+.demo{background:var(--accent-soft);border-radius:var(--r);padding:12px 14px;display:flex;flex-direction:column;gap:10px}
+.demo b{font-family:var(--f-display);font-size:16px}
+
+/* mode card */
+.modecard{background:var(--mode-soft);border-color:transparent}
+.modecard .eyebrow{font:600 11px/1 var(--f-body);letter-spacing:.09em;text-transform:uppercase;color:var(--mode)}
+.modecard h3{font-size:22px;margin-top:6px}
+.meds{display:flex;flex-direction:column;gap:6px;margin:10px 0 12px}
+.med{display:flex;justify-content:space-between;gap:10px;align-items:baseline;border-top:1px solid color-mix(in srgb,var(--mode) 22%,transparent);padding-top:6px}
+.med b{font-weight:600}
+.dose{font:600 15px var(--f-mono);font-variant-numeric:tabular-nums;white-space:nowrap}
+
+/* prompt */
+.prompt{border:1px dashed var(--mode);background:transparent}
+
+/* due list */
+.due{display:flex;flex-direction:column;background:var(--card);border:1px solid var(--line);border-radius:var(--r);overflow:hidden}
+.drow{display:grid;grid-template-columns:auto 1fr auto;gap:12px;align-items:center;padding:12px 14px;border-top:1px solid var(--line)}
+.drow:first-child{border-top:0}
+.dot{width:12px;height:12px;border-radius:50%;border:2px solid var(--muted)}
+.drow[data-s="due"] .dot{border-color:var(--accent);background:var(--accent)}
+.drow[data-s="done"] .dot{border-color:var(--ok);background:var(--ok)}
+.drow[data-s="later"] .dot,.drow[data-s="off"] .dot{border-style:dashed}
+.drow .t{min-width:0}
+.drow .t b{display:block;font-weight:600}
+.drow .t span{font-size:13px;color:var(--muted)}
+.drow .last{font:500 13px var(--f-mono);color:var(--ink);font-variant-numeric:tabular-nums}
+.drow[data-s="done"] .t b{color:var(--muted)}
+
+.flag{border-radius:10px;padding:10px 12px;font-size:14px}
+.flag.warn{background:var(--warn-soft);color:var(--warn)}
+.flag.danger{background:var(--danger-soft);color:var(--danger)}
+.flag.info{background:var(--soft);color:var(--ink)}
+.flag b{display:block;margin-bottom:2px}
+
+/* stats */
+.stats{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.stat{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px}
+.stat .k{font:600 11px/1.2 var(--f-body);letter-spacing:.07em;text-transform:uppercase;color:var(--muted)}
+.stat .v{font:600 22px/1.2 var(--f-mono);font-variant-numeric:tabular-nums;margin-top:6px;letter-spacing:-.02em}
+.stat .v small{font:500 12px var(--f-body);color:var(--muted);letter-spacing:0;margin-left:3px}
+.stat .s{font-size:12px;color:var(--muted);margin-top:2px}
+
+/* charts */
+.chart svg{width:100%;height:auto;display:block}
+.ch-grid{stroke:var(--line);stroke-width:1}
+.ch-txt{fill:var(--muted);font:10px var(--f-mono)}
+.ch-ref{stroke:var(--warn);stroke-width:1;stroke-dasharray:4 3}
+.ch-reft{fill:var(--warn);font:600 9px var(--f-mono)}
+.ch-mark{stroke:var(--mode);stroke-width:1;stroke-dasharray:2 3}
+.ch-markt{fill:var(--mode);font:600 9px var(--f-mono)}
+.legend{display:flex;flex-wrap:wrap;gap:12px;font-size:12px;color:var(--muted);margin-top:6px}
+.legend i{display:inline-block;width:14px;height:3px;border-radius:2px;vertical-align:middle;margin-right:5px}
+.empty{color:var(--muted);font-size:14px;padding:16px 0;text-align:center}
+
+/* history */
+.chips{display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;scrollbar-width:none}
+.chip{border:1px solid var(--line);background:var(--card);border-radius:99px;padding:6px 12px;font-size:13px;white-space:nowrap;cursor:pointer}
+.chip[aria-pressed="true"]{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+.dayh{font:600 12px var(--f-body);color:var(--muted);margin:14px 0 6px;letter-spacing:.04em}
+.hitem{display:grid;grid-template-columns:1fr auto;gap:2px 12px;padding:10px 14px;background:var(--card);border:1px solid var(--line);border-radius:12px;margin-bottom:6px;cursor:pointer;width:100%;text-align:left}
+.hitem .ty{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;font-weight:600}
+.hitem .tm{font:500 12px var(--f-mono);color:var(--muted);text-align:right}
+.hitem .sum{grid-column:1/-1;font-weight:500;min-width:0;overflow-wrap:anywhere}
+.hitem .sum.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+.hitem .nt{grid-column:1/-1;font-size:13px;color:var(--muted);overflow-wrap:anywhere}
+.hitem[data-t="dose"],.hitem[data-t="mode"]{background:var(--mode-soft);border-color:transparent}
+
+/* nav */
+.tabs{position:fixed;left:0;right:0;bottom:0;z-index:6;background:var(--card);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom,0px)}
+.tabs .wrap{display:grid;grid-template-columns:repeat(4,1fr)}
+.tab{background:none;border:0;padding:8px 4px 10px;display:flex;flex-direction:column;align-items:center;gap:3px;font-size:11px;font-weight:600;color:var(--muted);cursor:pointer}
+.tab svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.tab[aria-current="page"]{color:var(--accent)}
+
+/* sheet */
+.overlay{position:fixed;inset:0;z-index:20;background:rgb(10 14 22 / .45);display:flex;align-items:flex-end;justify-content:center}
+.panel{background:var(--paper);width:100%;max-width:560px;max-height:92%;border-radius:18px 18px 0 0;display:flex;flex-direction:column;overflow:hidden}
+.panel-h{display:flex;align-items:center;gap:10px;padding:14px max(16px,env(safe-area-inset-right,0px)) 10px max(16px,env(safe-area-inset-left,0px));border-bottom:1px solid var(--line)}
+.panel-h h3{flex:1;font:700 19px/1.2 var(--f-display);margin:0}
+.x{background:var(--soft);border:0;border-radius:50%;width:32px;height:32px;cursor:pointer;font-size:18px;line-height:1}
+.panel-b{overflow-y:auto;padding:14px max(16px,env(safe-area-inset-right,0px)) 14px max(16px,env(safe-area-inset-left,0px));display:flex;flex-direction:column;gap:16px}
+.panel-f{padding:12px max(16px,env(safe-area-inset-right,0px)) calc(12px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px));border-top:1px solid var(--line);display:flex;gap:8px;background:var(--card)}
+.panel-f .btn{flex:1}
+.confirm .panel{border-radius:18px;margin:16px;max-width:420px}
+.confirm.overlay{align-items:center}
+
+/* form */
+.field{display:flex;flex-direction:column;gap:6px;min-width:0}
+.field>label,.lbl{font-weight:600;font-size:14px}
+.hint{font-size:12px;color:var(--muted)}
+input[type=number],input[type=text],input[type=date],input[type=time],input[type=datetime-local],select,textarea{width:100%;min-width:0;border:1px solid var(--line);background:var(--card);border-radius:10px;padding:10px 12px;min-height:44px}
+textarea{min-height:70px;resize:vertical}
+.big input{font:600 24px var(--f-mono);text-align:center;font-variant-numeric:tabular-nums;padding:10px 4px}
+.grid3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.grid2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.unit{font-size:11px;color:var(--muted);text-align:center;letter-spacing:.05em;text-transform:uppercase}
+.seg{display:flex;flex-wrap:wrap;gap:4px}
+.seg input{position:absolute;opacity:0;pointer-events:none}
+.seg label{flex:1 1 auto;text-align:center;border:1px solid var(--line);background:var(--card);border-radius:8px;padding:8px 6px;font-size:13px;cursor:pointer;min-width:34px;font-weight:500}
+.seg input:checked+label{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.seg input:focus-visible+label{outline:2px solid var(--accent);outline-offset:2px}
+.scale label{font-family:var(--f-mono);padding:8px 0;min-width:0;flex:1 1 0}
+.scale-ends{display:flex;justify-content:space-between;font-size:11px;color:var(--muted)}
+.se-row{display:flex;flex-direction:column;gap:6px;padding:10px 0;border-top:1px solid var(--line)}
+.se-row .seg label{font-size:12px;padding:6px 4px}
+.q{display:flex;flex-direction:column;gap:8px;padding:12px 0;border-top:1px solid var(--line)}
+.q p{font-weight:500}
+.err{color:var(--danger);font-size:14px;font-weight:500}
+.toggle-link{background:none;border:0;color:var(--accent);font-weight:600;padding:0;cursor:pointer;text-align:left}
+
+/* settings */
+.setrow{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:10px 0;border-top:1px solid var(--line)}
+.setrow:first-of-type{border-top:0}
+.trk{padding:12px 0;border-top:1px solid var(--line);display:flex;flex-direction:column;gap:8px}
+.trk:first-of-type{border-top:0}
+.trk-h{display:flex;gap:12px;align-items:flex-start}
+.trk-h .t{flex:1;min-width:0}
+.trk-h b{display:block}
+.sw{position:relative;width:46px;height:28px;flex:none}
+.sw input{position:absolute;inset:0;opacity:0;margin:0;cursor:pointer;z-index:1}
+.sw span{position:absolute;inset:0;border-radius:99px;background:var(--line);transition:background .15s}
+.sw span::after{content:"";position:absolute;top:3px;left:3px;width:22px;height:22px;border-radius:50%;background:#fff;transition:transform .15s;box-shadow:0 1px 2px rgb(0 0 0 / .25)}
+.sw input:checked+span{background:var(--accent)}
+.sw input:checked+span::after{transform:translateX(18px)}
+.sw input:focus-visible+span{outline:2px solid var(--accent);outline-offset:2px}
+.sched{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.sched select{flex:1 1 170px;width:auto}
+.sched input[type=number]{width:76px;flex:none}
+.days{display:flex;gap:4px;width:100%}
+.days button{flex:1;border:1px solid var(--line);background:var(--card);border-radius:8px;padding:7px 0;font-size:12px;font-weight:600;cursor:pointer}
+.days button[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.modeseg{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.modeseg button{border:1px solid var(--line);background:var(--card);border-radius:10px;padding:10px;text-align:left;cursor:pointer}
+.modeseg button b{display:block}
+.modeseg button span{font-size:12px;color:var(--muted)}
+.modeseg button[aria-pressed="true"][data-v="titration"]{border-color:var(--titr);background:var(--titr-soft)}
+.modeseg button[aria-pressed="true"][data-v="stable"]{border-color:var(--stable);background:var(--stable-soft)}
+.copybox{width:100%;font:12px/1.5 var(--f-mono);min-height:180px;white-space:pre-wrap}
+.picker{display:flex;flex-direction:column;gap:6px}
+.picker button{display:flex;justify-content:space-between;align-items:center;gap:10px;text-align:left;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 14px;cursor:pointer}
+.picker button b{display:block}
+.picker .seg{flex-direction:column}
+.picker .seg label{text-align:left;padding:11px 14px;font-size:14px}
+.picker button span{font-size:13px;color:var(--muted)}
+
+#toast{position:fixed;left:50%;bottom:calc(84px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);z-index:30;background:var(--ink);color:var(--paper);padding:10px 16px;border-radius:10px;font-size:14px;font-weight:500;max-width:calc(100% - 32px);opacity:0;pointer-events:none;transition:opacity .2s}
+#toast.on{opacity:1}
+@media (prefers-reduced-motion: reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+
+
+<header class="top"><div class="wrap">
+  <div class="brand">Titration Tracker<small id="sub">On this device only</small></div>
+  <span class="pill" id="modepill">Titration</span>
+  <button class="btn sm" data-act="logpicker" aria-label="Log a reading">+ Log</button>
+</div></header>
+<main class="wrap" id="view"></main>
+<nav class="tabs" aria-label="Sections"><div class="wrap">
+  <button class="tab" data-tab="today"><svg viewBox="0 0 24 24"><path d="M3 12h4l3-7 4 14 3-7h4"/></svg>Today</button>
+  <button class="tab" data-tab="history"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h10"/></svg>History</button>
+  <button class="tab" data-tab="trends"><svg viewBox="0 0 24 24"><path d="M4 19V5M4 19h16M8 15l4-5 3 3 5-7"/></svg>Trends</button>
+  <button class="tab" data-tab="settings"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1 7 17M17 7l2.1-2.1"/></svg>Settings</button>
+</div></nav>
+<div id="sheet" hidden></div>
+<div id="confirm" hidden></div>
+<div id="toast" role="status" aria-live="polite"></div>
+<input type="file" id="restorefile" accept=".json,.txt,application/json,text/plain" hidden>
+
+<script>
+"use strict";
+/* ===== helpers ===== */
+const $ = (s, r = document) => r.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const uid = () => Math.random().toString(36).slice(2, 9) + Date.now().toString(36).slice(-5);
+const DAY = 864e5;
+const pad = n => String(n).padStart(2, "0");
+const startOfDay = t => { const d = new Date(t); d.setHours(0, 0, 0, 0); return d.getTime(); };
+const dayKey = t => { const d = new Date(t); return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`; };
+const fromDayKey = k => { const [y, m, d] = k.split("-").map(Number); return new Date(y, m - 1, d).getTime(); };
+const weekStart = t => { const d = new Date(startOfDay(t)); const dow = (d.getDay() + 6) % 7; return d.getTime() - dow * DAY; };
+const monthStart = t => { const d = new Date(t); return new Date(d.getFullYear(), d.getMonth(), 1).getTime(); };
+const toLocalInput = t => { const d = new Date(t); return `${dayKey(t)}T${pad(d.getHours())}:${pad(d.getMinutes())}`; };
+const fmtDate = (t, yr) => new Date(t).toLocaleDateString("en-GB", yr ? { day: "numeric", month: "short", year: "numeric" } : { day: "numeric", month: "short" });
+const fmtTime = t => { const d = new Date(t); return `${pad(d.getHours())}:${pad(d.getMinutes())}`; };
+const fmtDay = t => new Date(t).toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" });
+const rel = t => { const n = Math.round((startOfDay(Date.now()) - startOfDay(t)) / DAY); return n <= 0 ? "today" : n === 1 ? "yesterday" : `${n} days ago`; };
+const num = v => { if (v === null || v === undefined || String(v).trim() === "") return null; const n = Number(v); return Number.isFinite(n) ? n : NaN; };
+const round1 = n => Math.round(n * 10) / 10;
+const avg = a => a.length ? a.reduce((x, y) => x + y, 0) / a.length : null;
+const DOW = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
+/* ===== tracker definitions ===== */
+const TRACKERS = {
+  bp: { name: "Blood pressure & pulse", short: "BP", desc: "Systolic, diastolic and pulse. Two readings a minute apart, seated and rested, give a truer figure." },
+  weight: { name: "Weight", short: "Weight", desc: "Same scale and the same time of day each time, ideally first thing in the morning." },
+  wellbeing: { name: "Stress, sleep & mood", short: "Wellbeing", desc: "Quick ratings for stress, mood and sleep, plus appetite, caffeine and alcohol. All of these move blood pressure and pulse." },
+  sideeffects: { name: "Side effects", short: "Side effects", desc: "Common ADHD medication side effects, each rated none to severe." },
+  asrs: { name: "ADHD symptoms (ASRS)", short: "ASRS", desc: "The six screener questions from the WHO Adult ADHD Self-Report Scale v1.1, answered about the past week. Shows symptom change as the dose moves." },
+  pgi: { name: "Overall improvement (PGI-I)", short: "PGI-I", desc: "One standard question: compared with before medication, how are your symptoms now? Rated on a 7-point scale." },
+  functional: { name: "Daily functioning", short: "Functioning", desc: "Rate focus, getting things done, emotional control and relationships from 0 to 10." },
+  timing: { name: "Dose timing & wear-off", short: "Timing", desc: "When you took it, when it kicked in, when it wore off and any rebound. Helps decide on release type or a top-up dose." }
+};
+const ORDER = ["bp", "weight", "wellbeing", "sideeffects", "asrs", "pgi", "functional", "timing"];
+const OTHER_TYPES = { dose: "Medication change", note: "Note", mode: "Mode change" };
+const typeName = t => TRACKERS[t]?.short || OTHER_TYPES[t] || t;
+
+const SIDE_EFFECTS = ["Reduced appetite", "Trouble sleeping", "Headache", "Stomach ache or nausea", "Dry mouth", "Racing heart or palpitations", "Anxious or on edge", "Irritability", "Low mood or flat feeling", "Afternoon crash or rebound", "Dizziness", "Jaw clenching or teeth grinding", "Tics or twitches", "Sweating", "Chest pain"];
+const SEV = ["None", "Mild", "Moderate", "Severe"];
+const ASRS_Q = [
+  "How often do you have trouble wrapping up the final details of a project, once the challenging parts have been done?",
+  "How often do you have difficulty getting things in order when you have to do a task that requires organization?",
+  "How often do you have problems remembering appointments or obligations?",
+  "When you have a task that requires a lot of thought, how often do you avoid or delay getting started?",
+  "How often do you fidget or squirm with your hands or feet when you have to sit down for a long time?",
+  "How often do you feel overly active and compelled to do things, like you were driven by a motor?"
+];
+const ASRS_A = ["Never", "Rarely", "Sometimes", "Often", "Very often"];
+const PGI = ["Very much improved", "Much improved", "Minimally improved", "No change", "Minimally worse", "Much worse", "Very much worse"];
+const FUNC = [["focus", "Focus and concentration"], ["tasks", "Getting tasks done"], ["emotions", "Emotional control"], ["relationships", "Relationships and home life"]];
+const SCHED_KINDS = [["off", "Off in this mode"], ["daily", "Every day"], ["weekdays", "On set days of the week"], ["perWeek", "Times per week"], ["perMonth", "Times per month"]];
+
+const sched = (kind, n = 1, days = [1, 3, 5]) => ({ kind, n, days });
+function defaultSettings() {
+  return {
+    mode: "titration", titrationStart: dayKey(Date.now()), stableSince: null, weightUnit: "kg",
+    meds: [], thresholds: { sys: 135, dia: 85, pulse: 100 }, lastBackup: null, lastDoseCheck: null, demo: false,
+    trackers: {
+      bp: { on: true, titration: sched("perWeek", 3), stable: sched("perMonth", 2) },
+      weight: { on: true, titration: sched("perMonth", 1), stable: sched("perMonth", 1) },
+      wellbeing: { on: false, titration: sched("daily"), stable: sched("perWeek", 1) },
+      sideeffects: { on: false, titration: sched("perWeek", 1), stable: sched("perMonth", 1) },
+      asrs: { on: false, titration: sched("perWeek", 1), stable: sched("perMonth", 1) },
+      pgi: { on: false, titration: sched("perWeek", 1), stable: sched("perMonth", 1) },
+      functional: { on: false, titration: sched("perWeek", 1), stable: sched("perMonth", 1) },
+      timing: { on: false, titration: sched("perWeek", 2), stable: sched("off") }
+    }
+  };
+}
+function normalise(st) {
+  const d = defaultSettings();
+  const s = Object.assign({}, d, st.settings || {});
+  s.thresholds = Object.assign({}, d.thresholds, s.thresholds || {});
+  s.trackers = Object.assign({}, d.trackers, s.trackers || {});
+  for (const k of ORDER) s.trackers[k] = Object.assign({}, d.trackers[k], s.trackers[k] || {});
+  s.meds = Array.isArray(s.meds) ? s.meds : [];
+  return { version: 1, settings: s, entries: Array.isArray(st.entries) ? st.entries : [] };
+}
+
+/* ===== storage: IndexedDB on this device, localStorage fallback ===== */
+const Store = {
+  db: null, kind: "memory",
+  async init() {
+    try {
+      this.db = await new Promise((res, rej) => {
+        const r = indexedDB.open("titration-tracker", 1);
+        r.onupgradeneeded = () => r.result.createObjectStore("kv");
+        r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error);
+      });
+      this.kind = "idb";
+    } catch (e) {
+      try { localStorage.setItem("_tt", "1"); localStorage.removeItem("_tt"); this.kind = "ls"; } catch (e2) { this.kind = "memory"; }
+    }
+  },
+  async load() {
+    try {
+      if (this.kind === "idb") return await new Promise((res, rej) => { const q = this.db.transaction("kv").objectStore("kv").get("state"); q.onsuccess = () => res(q.result || null); q.onerror = () => rej(q.error); });
+      if (this.kind === "ls") { const v = localStorage.getItem("titration-tracker"); return v ? JSON.parse(v) : null; }
+    } catch (e) { console.warn(e); }
+    return null;
+  },
+  async save(obj) {
+    try {
+      if (this.kind === "idb") return await new Promise((res, rej) => { const tx = this.db.transaction("kv", "readwrite"); tx.objectStore("kv").put(obj, "state"); tx.oncomplete = res; tx.onerror = () => rej(tx.error); });
+      if (this.kind === "ls") localStorage.setItem("titration-tracker", JSON.stringify(obj));
+    } catch (e) { console.warn(e); toast("Couldn't save to this device. Back up your data now."); }
+  }
+};
+
+let state = null;
+const ui = { tab: "today", hist: "all", range: 30, schedMode: null, sheetType: null };
+let saveTimer = null;
+function commit() {
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(() => Store.save(JSON.parse(JSON.stringify(state))), 150);
+  render();
+}
+async function askPersist() { try { if (navigator.storage && navigator.storage.persist) await navigator.storage.persist(); } catch (e) {} }
+
+/* ===== demo data ===== */
+function demoState() {
+  const st = { version: 1, settings: defaultSettings(), entries: [] };
+  const S = st.settings; S.demo = true;
+  const start = startOfDay(Date.now()) - 42 * DAY;
+  S.titrationStart = dayKey(start);
+  ["wellbeing", "sideeffects", "asrs", "pgi"].forEach(k => S.trackers[k].on = true);
+  S.trackers.wellbeing.titration = sched("perWeek", 3);
+  const med = { id: uid(), name: "Lisdexamfetamine", dose: 70, unit: "mg", timing: "Morning, 07:30" };
+  S.meds = [med];
+  S.lastDoseCheck = start + 28 * DAY;
+  let seed = 11; const rnd = () => (seed = (seed * 16807) % 2147483647, (seed - 1) / 2147483646);
+  const doseAt = d => d >= 28 ? 70 : d >= 14 ? 50 : 30;
+  const add = (ts, type, data, note = "", dose) => st.entries.push({ id: uid(), ts, type, mode: "titration", meds: dose ? `Lisdexamfetamine ${dose} mg` : "", data, note });
+  [[0, 0, 30, "Started medication"], [14, 30, 50, "Increase per titration plan"], [28, 50, 70, "Increase per titration plan"]]
+    .forEach(([d, from, to, reason]) => add(start + d * DAY + 7.5 * 36e5, "dose", { medId: med.id, name: med.name, from, to, unit: "mg", reason }));
+  for (let d = 0; d <= 41; d++) {
+    const day = start + d * DAY, dow = new Date(day).getDay(), dose = doseAt(d), bump = dose === 30 ? 1 : dose === 50 ? 3.5 : 5.5;
+    if ([1, 3, 5].includes(dow)) {
+      const sys = Math.round(120 + bump + rnd() * 9 - 4.5), dia = Math.round(76 + bump * .7 + rnd() * 6 - 3), pulse = Math.round(70 + bump * 1.7 + rnd() * 8 - 4);
+      add(day + 10 * 36e5 + Math.round(rnd() * 40) * 6e4, "bp", { sys, dia, pulse, readings: [[sys, dia, pulse]], arm: "Left", pos: "Seated" }, d === 33 ? "Coffee about 30 min before" : "", dose);
+    }
+    if ([2, 4, 6].includes(dow)) {
+      add(day + 21 * 36e5, "wellbeing", { stress: Math.round(3 + rnd() * 4), mood: Math.round(5 + d / 14 + rnd() * 2), sleepHours: round1(6 + rnd() * 2 - (dose === 70 ? .5 : 0)), sleepQuality: Math.round(5 + rnd() * 3), appetite: d > 10 ? "Low" : "Normal", caffeine: Math.round(1 + rnd() * 2), alcohol: dow === 6 ? 3 : 0 }, "", dose);
+    }
+    if (dow === 0) {
+      const target = 17 - Math.min(9, Math.round(d / 4.5));
+      const answers = Array.from({ length: 6 }, () => Math.max(0, Math.min(4, Math.round(target / 6 + rnd() - .5))));
+      add(day + 19 * 36e5, "asrs", { answers }, "", dose);
+      if (d >= 7) add(day + 19 * 36e5 + 6e4, "pgi", { score: d >= 28 ? 2 : d >= 14 ? 3 : 4 }, "", dose);
+      const se = {}; SIDE_EFFECTS.forEach(s => se[s] = 0);
+      se["Reduced appetite"] = d > 10 ? (dose === 70 ? 2 : 1) : 0; se["Trouble sleeping"] = dose === 70 ? 1 : 0; se["Dry mouth"] = dose >= 50 ? 1 : 0; se["Afternoon crash or rebound"] = dose === 50 ? 1 : 0;
+      add(day + 19 * 36e5 + 12e4, "sideeffects", { se }, "", dose);
+    }
+  }
+  add(start + 9 * 36e5, "weight", { kg: 82.4 }, "Morning, before breakfast", 30);
+  add(start + 30 * DAY + 9 * 36e5, "weight", { kg: 81.0 }, "", 70);
+  add(start + 22 * DAY + 13 * 36e5, "note", {}, "Missed dose, overslept. Felt scattered all day.", 50);
+  return st;
+}
+
+/* ===== scheduling ===== */
+const mode = () => state.settings.mode;
+const enabled = () => ORDER.filter(k => state.settings.trackers[k].on);
+const entriesOf = t => state.entries.filter(e => e.type === t).sort((a, b) => a.ts - b.ts);
+function nextDay(days, dow) { for (let i = 1; i <= 7; i++) { const d = (dow + i) % 7; if (days.includes(d)) return i === 1 ? "tomorrow" : DOW[d]; } return "none set"; }
+function status(id) {
+  const s = state.settings.trackers[id][mode()];
+  const now = Date.now(), today = dayKey(now), list = entriesOf(id);
+  const loggedToday = list.some(e => dayKey(e.ts) === today);
+  const last = list[list.length - 1] || null;
+  if (s.kind === "off") return { s: "off", label: "Not scheduled in this mode", last };
+  if (s.kind === "daily") return { s: loggedToday ? "done" : "due", label: loggedToday ? "Done today" : "Due today", last };
+  if (s.kind === "weekdays") {
+    const dow = new Date(now).getDay();
+    if (s.days.includes(dow)) return { s: loggedToday ? "done" : "due", label: loggedToday ? "Done today" : "Due today", last };
+    return { s: "later", label: `Next due ${nextDay(s.days, dow)}`, last };
+  }
+  const startT = s.kind === "perWeek" ? weekStart(now) : monthStart(now);
+  const per = s.kind === "perWeek" ? "this week" : "this month";
+  const c = list.filter(e => e.ts >= startT).length;
+  if (c >= s.n) return { s: "done", label: `${c} of ${s.n} ${per}, all done`, last };
+  if (loggedToday) return { s: "done", label: `${c} of ${s.n} ${per}, next one another day`, last };
+  return { s: "due", label: `${c} of ${s.n} ${per}`, last };
+}
+function schedText(s) {
+  if (s.kind === "off") return "Off";
+  if (s.kind === "daily") return "Every day";
+  if (s.kind === "weekdays") return s.days.length ? [1, 2, 3, 4, 5, 6, 0].filter(d => s.days.includes(d)).map(d => DOW[d]).join(", ") : "No days chosen";
+  return `${s.n}× per ${s.kind === "perWeek" ? "week" : "month"}`;
+}
+
+/* ===== units, summaries, flags ===== */
+function fmtWeight(kg) {
+  if (kg == null) return "–";
+  const u = state.settings.weightUnit;
+  if (u === "lb") return `${round1(kg * 2.20462)} lb`;
+  if (u === "st") { const lb = kg * 2.20462; let st = Math.floor(lb / 14), r = Math.round(lb - st * 14); if (r === 14) { st++; r = 0; } return `${st} st ${r} lb`; }
+  return `${round1(kg)} kg`;
+}
+const asrsScore = a => a.reduce((x, y) => x + y, 0);
+const asrsShaded = a => a.filter((v, i) => i < 3 ? v >= 2 : v >= 3).length;
+function summary(e) {
+  const d = e.data || {};
+  switch (e.type) {
+    case "bp": return `${d.sys}/${d.dia} mmHg${d.pulse ? ` · ${d.pulse} bpm` : ""}${d.readings && d.readings.length > 1 ? " · avg of 2" : ""}`;
+    case "weight": return fmtWeight(d.kg);
+    case "wellbeing": return [d.stress != null && `Stress ${d.stress}/10`, d.mood != null && `Mood ${d.mood}/10`, d.sleepHours != null && `Sleep ${d.sleepHours}h`, d.appetite && `Appetite ${d.appetite.toLowerCase()}`].filter(Boolean).join(" · ") || "Logged";
+    case "sideeffects": { const l = Object.entries(d.se || {}).filter(([, v]) => v > 0).map(([k, v]) => `${k} (${SEV[v].toLowerCase()})`); return l.length ? l.join(", ") : "None reported"; }
+    case "asrs": return `Score ${asrsScore(d.answers)}/24 · ${asrsShaded(d.answers)} of 6 in the high range`;
+    case "pgi": return PGI[d.score - 1] || "–";
+    case "functional": return FUNC.map(([k, l]) => `${l.split(" ")[0]} ${d[k]}`).join(" · ");
+    case "timing": return [d.taken && `Taken ${d.taken}`, d.onset && `working by ${d.onset}`, d.wearoff && `wore off ${d.wearoff}`, d.rebound && d.rebound !== "None" && `${d.rebound.toLowerCase()} rebound`, d.adherence && d.adherence !== "As prescribed" && d.adherence.toLowerCase()].filter(Boolean).join(" · ") || "Logged";
+    case "dose": return d.to === 0 ? `${d.name} stopped (was ${d.from} ${d.unit})` : d.from ? `${d.name} ${d.from} → ${d.to} ${d.unit}` : `${d.name} started at ${d.to} ${d.unit}`;
+    case "mode": return d.to === "stable" ? "Switched to stable mode" : "Switched to titration mode";
+    case "note": return e.note || "Note";
+  }
+  return "";
+}
+function bpFlag(s, d, p) {
+  const t = state.settings.thresholds;
+  if (s >= 180 || d >= 120) return { level: "danger", title: "Very high reading", msg: "Sit quietly for 5 minutes and measure again. If it is still this high, or you have chest pain, a severe headache, breathlessness, confusion or vision changes, call emergency services (999 in the UK). Otherwise contact your prescriber or NHS 111 today." };
+  if (s >= t.sys || d >= t.dia) return { level: "warn", title: `Above your alert level of ${t.sys}/${t.dia}`, msg: "A single high reading is common. If your average stays above this level, tell your prescriber." };
+  if (p && p >= t.pulse) return { level: "warn", title: `Pulse at or above ${t.pulse} bpm`, msg: "Remeasure after sitting quietly for 5 minutes, and note it for your prescriber." };
+  if (s && s < 90) return { level: "warn", title: "Low reading", msg: "If you feel faint or dizzy, sit or lie down, and mention it to your prescriber." };
+  return null;
+}
+const flagHTML = f => f ? `<div class="flag ${f.level}"><b>${esc(f.title)}</b>${esc(f.msg)}</div>` : "";
+const medString = () => state.settings.meds.map(m => `${m.name} ${m.dose} ${m.unit}`).join(", ");
+
+/* ===== stats ===== */
+function bpStats(days) {
+  const from = days ? Date.now() - days * DAY : 0;
+  const l = entriesOf("bp").filter(e => e.ts >= from);
+  if (!l.length) return null;
+  const p = l.filter(e => e.data.pulse).map(e => e.data.pulse);
+  const hi = l.reduce((a, e) => !a || e.data.sys > a.data.sys ? e : a, null);
+  return { n: l.length, sys: Math.round(avg(l.map(e => e.data.sys))), dia: Math.round(avg(l.map(e => e.data.dia))), pulse: p.length ? Math.round(avg(p)) : null, hi };
+}
+function weightStats() {
+  const l = entriesOf("weight"); if (!l.length) return null;
+  const first = l[0], last = l[l.length - 1];
+  return { first, last, diff: last.data.kg - first.data.kg, pct: (last.data.kg - first.data.kg) / first.data.kg * 100 };
+}
+
+/* ===== charts ===== */
+function niceStep(range, target = 4) { const raw = range / target; const p = Math.pow(10, Math.floor(Math.log10(raw))); for (const m of [1, 2, 2.5, 5, 10]) if (raw <= m * p) return m * p; return 10 * p; }
+function chart({ series, refs = [], markers = [], from, to, h = 190, fmt = v => v }) {
+  const W = 340, H = h, L = 34, R = 12, T = 14, B = 22;
+  const pts = series.flatMap(s => s.points);
+  if (!pts.length) return `<p class="empty">No readings in this period yet.</p>`;
+  let lo = Math.min(...pts.map(p => p.v), ...refs.map(r => r.v)), hi = Math.max(...pts.map(p => p.v), ...refs.map(r => r.v));
+  if (lo === hi) { lo -= 2; hi += 2; }
+  const step = niceStep(hi - lo); lo = Math.floor(lo / step) * step; hi = Math.ceil(hi / step) * step;
+  if (to - from < DAY) from = to - DAY;
+  const x = t => L + (t - from) / (to - from) * (W - L - R), y = v => T + (hi - v) / (hi - lo) * (H - T - B);
+  let g = "";
+  for (let v = lo; v <= hi + 1e-9; v += step) g += `<line class="ch-grid" x1="${L}" x2="${W - R}" y1="${y(v)}" y2="${y(v)}"/><text class="ch-txt" x="${L - 5}" y="${y(v) + 3}" text-anchor="end">${fmt(round1(v))}</text>`;
+  [from, (from + to) / 2, to].forEach((t, i) => g += `<text class="ch-txt" x="${x(t)}" y="${H - 6}" text-anchor="${["start", "middle", "end"][i]}">${fmtDate(t)}</text>`);
+  refs.forEach(r => g += `<line class="ch-ref" x1="${L}" x2="${W - R}" y1="${y(r.v)}" y2="${y(r.v)}"/><text class="ch-reft" x="${W - R}" y="${y(r.v) - 3}" text-anchor="end">${esc(r.label)}</text>`);
+  markers.filter(m => m.t >= from && m.t <= to).forEach(m => g += `<line class="ch-mark" x1="${x(m.t)}" x2="${x(m.t)}" y1="${T}" y2="${H - B}"/><text class="ch-markt" x="${x(m.t) + 3}" y="${T + 6}">${esc(m.label)}</text>`);
+  series.forEach(s => {
+    const p = s.points.filter(q => q.t >= from && q.t <= to).sort((a, b) => a.t - b.t);
+    if (!p.length) return;
+    g += `<polyline points="${p.map(q => `${x(q.t).toFixed(1)},${y(q.v).toFixed(1)}`).join(" ")}" style="fill:none;stroke:var(${s.c});stroke-width:2;stroke-linejoin:round;stroke-linecap:round"/>`;
+    p.forEach((q, i) => g += `<circle cx="${x(q.t).toFixed(1)}" cy="${y(q.v).toFixed(1)}" r="${i === p.length - 1 ? 4 : 2.2}" style="fill:${i === p.length - 1 ? `var(${s.c})` : "var(--card)"};stroke:var(${s.c});stroke-width:1.5"/>`);
+  });
+  const legend = series.length > 1 || refs.length ? `<div class="legend">${series.map(s => `<span><i style="background:var(${s.c})"></i>${esc(s.name)}</span>`).join("")}${markers.length ? `<span><i style="background:var(--mode)"></i>Dose change</span>` : ""}</div>` : "";
+  return `<div class="chart"><svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(series.map(s => s.name).join(", "))} chart">${g}</svg>${legend}</div>`;
+}
+
+/* ===== render ===== */
+function render() {
+  document.body.dataset.mode = mode();
+  $("#modepill").textContent = mode() === "titration" ? "Titrating" : "Stable";
+  $("#sub").textContent = state.settings.demo ? "Example data" : "Saved on this device";
+  document.querySelectorAll(".tab").forEach(b => b.dataset.tab === ui.tab ? b.setAttribute("aria-current", "page") : b.removeAttribute("aria-current"));
+  const v = $("#view");
+  v.innerHTML = ({ today: viewToday, history: viewHistory, trends: viewTrends, settings: viewSettings })[ui.tab]();
+}
+
+const demoBanner = () => state.settings.demo ? `<div class="demo"><div><b>You're looking at example data.</b><p class="small">Six weeks of a made-up titration so you can see how it works. None of it is yours.</p></div><div class="btns"><button class="btn sm" data-act="startfresh">Start my own tracker</button></div></div>` : "";
+
+function viewToday() {
+  const S = state.settings, titr = mode() === "titration";
+  const wk = Math.floor((startOfDay(Date.now()) - fromDayKey(S.titrationStart)) / DAY / 7) + 1;
+  const doses = entriesOf("dose"), lastDose = doses[doses.length - 1];
+  let h = demoBanner();
+  h += `<section class="card modecard"><div class="eyebrow">${titr ? "Titration" : "Stable"}</div>
+    <h3>${titr ? (wk >= 1 ? `Week ${wk} of titration` : `Titration starts ${fmtDate(fromDayKey(S.titrationStart))}`) : `Stable since ${S.stableSince ? fmtDate(S.stableSince, true) : "today"}`}</h3>
+    ${S.meds.length ? `<div class="meds">${S.meds.map(m => `<div class="med"><span><b>${esc(m.name)}</b>${m.timing ? `<br><span class="small muted">${esc(m.timing)}</span>` : ""}</span><span class="dose">${esc(m.dose)} ${esc(m.unit)}</span></div>`).join("")}</div>` : `<p class="small muted" style="margin:6px 0 12px">Add your medication so each reading records the dose you were on.</p>`}
+    <div class="btns">${S.meds.length ? (titr ? `<button class="btn sm" data-act="dosechange">Record dose change</button>` : "") : `<button class="btn sm" data-act="addmed">Add medication</button>`}
+    ${lastDose ? `<span class="small muted" style="align-self:center">Last change ${fmtDate(lastDose.ts)}</span>` : ""}</div></section>`;
+
+  if (titr && S.meds.length && (!S.lastDoseCheck || Date.now() - S.lastDoseCheck > 7 * DAY) && (!lastDose || Date.now() - lastDose.ts > 7 * DAY)) {
+    h += `<section class="card prompt"><h3>Has your dose changed this week?</h3><p class="small muted" style="margin-bottom:10px">Readings are tagged with your current dose, so keep it up to date during titration.</p>
+      <div class="btns"><button class="btn sm ghost" data-act="dosesame">No change</button><button class="btn sm" data-act="dosechange">Yes, record it</button></div></section>`;
+  }
+
+  const b7 = bpStats(7);
+  if (b7) { const f = bpFlag(b7.sys, b7.dia, b7.pulse); if (f && b7.n >= 3) h += `<div class="flag ${f.level === "danger" ? "danger" : "warn"}"><b>Your 7-day average is ${b7.sys}/${b7.dia}${b7.pulse ? `, pulse ${b7.pulse}` : ""}</b>${f.level === "danger" ? f.msg : "That's above your alert level across several readings. Share it with your prescriber."}</div>`; }
+  const ws = weightStats();
+  if (ws && ws.pct <= -5) h += `<div class="flag info"><b>Weight down ${Math.abs(round1(ws.pct))}% since ${fmtDate(ws.first.ts)}</b>Appetite loss is common on ADHD medication. Mention it at your next review.</div>`;
+
+  const en = enabled();
+  const rows = en.map(id => ({ id, st: status(id) })).sort((a, b) => ["due", "later", "done", "off"].indexOf(a.st.s) - ["due", "later", "done", "off"].indexOf(b.st.s));
+  const nDue = rows.filter(r => r.st.s === "due").length;
+  h += `<h2 class="sec">${nDue ? `${nDue} to do today` : "All caught up"} · ${fmtDay(Date.now())}</h2>`;
+  h += rows.length ? `<div class="due">${rows.map(({ id, st }) => `<div class="drow" data-s="${st.s}"><span class="dot" aria-hidden="true"></span>
+      <div class="t"><b>${esc(TRACKERS[id].name)}</b><span>${esc(st.label)}${st.last ? ` · last ${rel(st.last.ts)}` : ""}</span>${st.last && (id === "bp" || id === "weight") ? `<div class="last">${esc(summary(st.last))}</div>` : ""}</div>
+      <button class="btn sm ${st.s === "due" ? "" : "line"}" data-act="log" data-t="${id}">${st.s === "due" ? "Log" : "Add"}</button></div>`).join("")}</div>`
+    : `<div class="card"><p>Nothing is being tracked. Choose what to track in Settings.</p></div>`;
+
+  if (!S.demo && state.entries.length >= 3 && (!S.lastBackup || Date.now() - S.lastBackup > 14 * DAY)) {
+    h += `<section class="card"><h3>${S.lastBackup ? `Last backup ${rel(S.lastBackup)}` : "Not backed up yet"}</h3><p class="small muted" style="margin-bottom:10px">Your records only live on this phone. Save a copy to Google Drive, Dropbox or Files in case the phone is lost or the browser data is cleared.</p><button class="btn sm" data-act="backup">Back up now</button></section>`;
+  }
+  return `<div class="stack">${h}</div>`;
+}
+
+function viewHistory() {
+  const types = ["all", ...ORDER.filter(t => state.entries.some(e => e.type === t)), ...Object.keys(OTHER_TYPES).filter(t => state.entries.some(e => e.type === t))];
+  const list = state.entries.filter(e => ui.hist === "all" || e.type === ui.hist).sort((a, b) => b.ts - a.ts);
+  let h = demoBanner() + `<div class="chips" role="group" aria-label="Filter">${types.map(t => `<button class="chip" data-act="hist" data-t="${t}" aria-pressed="${ui.hist === t}">${t === "all" ? "Everything" : esc(typeName(t))}</button>`).join("")}</div>`;
+  if (!list.length) return `<div class="stack">${h}<p class="empty">Nothing logged yet. Tap + Log to add your first reading.</p></div>`;
+  let cur = "", body = "";
+  for (const e of list) {
+    const k = dayKey(e.ts);
+    if (k !== cur) { cur = k; body += `<div class="dayh">${fmtDay(e.ts)}</div>`; }
+    body += `<button class="hitem" data-act="edit" data-id="${e.id}" data-t="${e.type}"><span class="ty">${esc(typeName(e.type))}</span><span class="tm">${fmtTime(e.ts)}</span><span class="sum ${e.type === "bp" || e.type === "weight" ? "mono" : ""}">${esc(summary(e))}</span>${e.note && e.type !== "note" ? `<span class="nt">${esc(e.note)}</span>` : ""}${e.meds && e.type !== "dose" ? `<span class="nt">On ${esc(e.meds)}</span>` : ""}</button>`;
+  }
+  return `<div class="stack">${h}<div>${body}</div></div>`;
+}
+
+function viewTrends() {
+  const to = Date.now(), first = state.entries.length ? Math.min(...state.entries.map(e => e.ts)) : to - 30 * DAY;
+  const from = ui.range ? to - ui.range * DAY : first - DAY;
+  const markers = entriesOf("dose").map(e => ({ t: e.ts, label: e.data.to ? `${e.data.to}` : "stop" }));
+  const t = state.settings.thresholds;
+  const bp = entriesOf("bp"), b7 = bpStats(7), b30 = bpStats(30), ws = weightStats();
+  let h = demoBanner();
+  h += `<div class="chips" role="group" aria-label="Time range">${[[30, "30 days"], [90, "90 days"], [0, "All time"]].map(([v, l]) => `<button class="chip" data-act="range" data-v="${v}" aria-pressed="${ui.range === v}">${l}</button>`).join("")}</div>`;
+  h += `<div class="stats">
+    <div class="stat"><div class="k">BP, 7-day avg</div><div class="v">${b7 ? `${b7.sys}/${b7.dia}` : "–"}<small>mmHg</small></div><div class="s">${b7 ? `${b7.n} reading${b7.n > 1 ? "s" : ""}` : "No readings"}</div></div>
+    <div class="stat"><div class="k">BP, 30-day avg</div><div class="v">${b30 ? `${b30.sys}/${b30.dia}` : "–"}<small>mmHg</small></div><div class="s">${b30 ? `${b30.n} readings` : "No readings"}</div></div>
+    <div class="stat"><div class="k">Pulse, 30-day avg</div><div class="v">${b30 && b30.pulse ? b30.pulse : "–"}<small>bpm</small></div><div class="s">Resting</div></div>
+    <div class="stat"><div class="k">Weight</div><div class="v">${ws ? esc(fmtWeight(ws.last.data.kg)) : "–"}</div><div class="s">${ws && ws.first !== ws.last ? `${ws.diff > 0 ? "+" : "−"}${esc(fmtWeight(Math.abs(ws.diff)).replace(/^0 st /, ""))} since ${fmtDate(ws.first.ts)}` : "One reading so far"}</div></div></div>`;
+  h += `<section class="card"><h3>Blood pressure</h3>${chart({ series: [{ name: "Systolic", c: "--c-sys", points: bp.map(e => ({ t: e.ts, v: e.data.sys })) }, { name: "Diastolic", c: "--c-dia", points: bp.map(e => ({ t: e.ts, v: e.data.dia })) }], refs: [{ v: t.sys, label: `${t.sys}` }, { v: t.dia, label: `${t.dia}` }], markers, from, to })}</section>`;
+  h += `<section class="card"><h3>Pulse</h3>${chart({ series: [{ name: "Pulse (bpm)", c: "--c-pulse", points: bp.filter(e => e.data.pulse).map(e => ({ t: e.ts, v: e.data.pulse })) }], refs: [{ v: t.pulse, label: `${t.pulse}` }], markers, from, to, h: 160 })}</section>`;
+  const wl = entriesOf("weight");
+  const wconv = state.settings.weightUnit === "kg" ? 1 : 2.20462;
+  h += `<section class="card"><h3>Weight</h3>${chart({ series: [{ name: `Weight (${state.settings.weightUnit === "kg" ? "kg" : "lb"})`, c: "--c-weight", points: wl.map(e => ({ t: e.ts, v: round1(e.data.kg * wconv) })) }], markers, from, to, h: 160 })}</section>`;
+  const as = entriesOf("asrs");
+  if (as.length) h += `<section class="card"><h3>ADHD symptoms (ASRS score)</h3><p class="small muted">0 to 24. Lower means fewer symptoms over the past week.</p>${chart({ series: [{ name: "ASRS score", c: "--c-score", points: as.map(e => ({ t: e.ts, v: asrsScore(e.data.answers) })) }], markers, from, to, h: 160 })}</section>`;
+  const wb = entriesOf("wellbeing");
+  if (wb.length) h += `<section class="card"><h3>Stress and mood</h3>${chart({ series: [{ name: "Stress", c: "--c-pulse", points: wb.filter(e => e.data.stress != null).map(e => ({ t: e.ts, v: e.data.stress })) }, { name: "Mood", c: "--c-weight", points: wb.filter(e => e.data.mood != null).map(e => ({ t: e.ts, v: e.data.mood })) }], markers, from, to, h: 150 })}</section>`;
+  h += `<section class="card"><h3>Summary for your prescriber</h3><p class="small muted" style="margin-bottom:10px">Plain text you can paste into an email or read out at a review.</p><textarea class="copybox" id="reporttext" readonly>${esc(report())}</textarea><div class="btns" style="margin-top:10px"><button class="btn sm" data-act="copy" data-src="reporttext">Copy summary</button><button class="btn sm line" data-act="csv">Export spreadsheet (CSV)</button></div></section>`;
+  return `<div class="stack">${h}</div>`;
+}
+
+function report() {
+  const S = state.settings, L = [];
+  L.push("ADHD medication monitoring summary");
+  L.push(`Generated ${fmtDate(Date.now(), true)}. Home readings recorded by the patient.`);
+  L.push(mode() === "titration" ? `Mode: titration, started ${fmtDate(fromDayKey(S.titrationStart), true)}` : `Mode: stable${S.stableSince ? ` since ${fmtDate(S.stableSince, true)}` : ""}`);
+  L.push(`Current medication: ${S.meds.length ? S.meds.map(m => `${m.name} ${m.dose} ${m.unit}${m.timing ? ` (${m.timing})` : ""}`).join("; ") : "none recorded"}`);
+  const doses = entriesOf("dose");
+  if (doses.length) L.push(`Dose history: ${doses.map(e => `${fmtDate(e.ts)} ${e.data.name} ${e.data.to ? `${e.data.to} ${e.data.unit}` : "stopped"}`).join("; ")}`);
+  L.push("");
+  const b7 = bpStats(7), b30 = bpStats(30), all = bpStats(0);
+  if (all) {
+    L.push(`Blood pressure, last 7 days: ${b7 ? `average ${b7.sys}/${b7.dia} mmHg from ${b7.n} reading(s)` : "no readings"}`);
+    L.push(`Blood pressure, last 30 days: ${b30 ? `average ${b30.sys}/${b30.dia} mmHg from ${b30.n} reading(s); highest ${b30.hi.data.sys}/${b30.hi.data.dia} on ${fmtDate(b30.hi.ts)}` : "no readings"}`);
+    if (b30 && b30.pulse) L.push(`Pulse, last 30 days: average ${b30.pulse} bpm`);
+    const pre = entriesOf("bp").filter(e => entriesOf("dose")[0] && e.ts < entriesOf("dose")[0].ts);
+    if (pre.length) L.push(`Before first dose: average ${Math.round(avg(pre.map(e => e.data.sys)))}/${Math.round(avg(pre.map(e => e.data.dia)))} mmHg (${pre.length} readings)`);
+  } else L.push("Blood pressure: no readings yet");
+  const ws = weightStats();
+  if (ws) L.push(`Weight: ${fmtWeight(ws.last.data.kg)} on ${fmtDate(ws.last.ts)}${ws.first !== ws.last ? `; ${ws.diff >= 0 ? "+" : "-"}${round1(Math.abs(ws.diff))} kg (${round1(ws.pct)}%) since ${fmtDate(ws.first.ts)}` : ""}`);
+  const as = entriesOf("asrs");
+  if (as.length) L.push(`ASRS v1.1 Part A (past week, 0-24): latest ${asrsScore(as[as.length - 1].data.answers)} on ${fmtDate(as[as.length - 1].ts)}; first ${asrsScore(as[0].data.answers)} on ${fmtDate(as[0].ts)}`);
+  const pg = entriesOf("pgi");
+  if (pg.length) L.push(`Patient global impression of improvement, latest: ${PGI[pg[pg.length - 1].data.score - 1]}`);
+  const se = entriesOf("sideeffects").filter(e => e.ts > Date.now() - 30 * DAY), tally = {};
+  se.forEach(e => Object.entries(e.data.se || {}).forEach(([k, v]) => { if (v > 0) { tally[k] = tally[k] || { n: 0, max: 0 }; tally[k].n++; tally[k].max = Math.max(tally[k].max, v); } }));
+  if (se.length) L.push(`Side effects, last 30 days: ${Object.keys(tally).length ? Object.entries(tally).map(([k, v]) => `${k} (reported ${v.n}x, worst ${SEV[v.max].toLowerCase()})`).join("; ") : "none reported"}`);
+  const wb = entriesOf("wellbeing").filter(e => e.ts > Date.now() - 30 * DAY);
+  if (wb.length) { const sl = wb.filter(e => e.data.sleepHours != null).map(e => e.data.sleepHours), st = wb.filter(e => e.data.stress != null).map(e => e.data.stress); L.push(`Last 30 days: average sleep ${sl.length ? round1(avg(sl)) + " h" : "–"}, average stress ${st.length ? round1(avg(st)) + "/10" : "–"}`); }
+  const notes = state.entries.filter(e => e.type === "note" && e.ts > Date.now() - 30 * DAY).sort((a, b) => a.ts - b.ts);
+  if (notes.length) { L.push(""); L.push("Notes, last 30 days:"); notes.forEach(e => L.push(`- ${fmtDate(e.ts)}: ${e.note}`)); }
+  return L.join("\n");
+}
+
+function schedControl(id, m) {
+  const s = state.settings.trackers[id][m];
+  let h = `<div class="sched"><select data-sched="${id}" data-m="${m}" data-f="kind" aria-label="How often, ${esc(TRACKERS[id].name)}">${SCHED_KINDS.map(([v, l]) => `<option value="${v}"${s.kind === v ? " selected" : ""}>${l}</option>`).join("")}</select>`;
+  if (s.kind === "perWeek" || s.kind === "perMonth") h += `<input type="number" min="1" max="${s.kind === "perWeek" ? 7 : 31}" value="${s.n}" data-sched="${id}" data-m="${m}" data-f="n" aria-label="Number of times" id="n-${id}-${m}">`;
+  if (s.kind === "weekdays") h += `<div class="days">${[1, 2, 3, 4, 5, 6, 0].map(d => `<button data-act="schedday" data-t="${id}" data-m="${m}" data-d="${d}" aria-pressed="${s.days.includes(d)}">${DOW[d].slice(0, 2)}</button>`).join("")}</div>`;
+  return h + `</div>`;
+}
+
+function viewSettings() {
+  const S = state.settings, sm = ui.schedMode || mode();
+  const standalone = matchMedia("(display-mode: standalone)").matches || navigator.standalone;
+  let h = demoBanner();
+  h += `<h2 class="sec">Mode</h2><section class="card stack">
+    <div class="modeseg"><button data-act="setmode" data-v="titration" aria-pressed="${S.mode === "titration"}"><b>Titration</b><span>Dose is being adjusted. More frequent checks and a weekly dose prompt.</span></button>
+    <button data-act="setmode" data-v="stable" aria-pressed="${S.mode === "stable"}"><b>Stable</b><span>Dose is settled. Fewer checks, no dose prompts.</span></button></div>
+    <div class="field"><label for="tstart">Titration start date</label><input type="date" id="tstart" data-set="titrationStart" value="${esc(S.titrationStart)}"></div></section>`;
+
+  h += `<h2 class="sec">Medication</h2><section class="card">${S.meds.length ? S.meds.map(m => `<div class="setrow"><div><b>${esc(m.name)}</b> <span class="dose">${esc(m.dose)} ${esc(m.unit)}</span>${m.timing ? `<div class="small muted">${esc(m.timing)}</div>` : ""}</div><button class="btn sm line" data-act="editmed" data-id="${m.id}">Edit</button></div>`).join("") : `<p class="muted small">No medication added yet.</p>`}
+    <div class="btns" style="margin-top:10px"><button class="btn sm" data-act="addmed">Add medication</button>${S.meds.length ? `<button class="btn sm line" data-act="dosechange">Record dose change</button>` : ""}</div></section>`;
+
+  h += `<h2 class="sec">What to track and how often</h2><section class="card">
+    <p class="small muted" style="margin-bottom:10px">Turn on only what your prescriber asks for, or what you find useful. Each item has its own schedule for titration and for stable mode.</p>
+    <div class="chips" role="group" aria-label="Schedule for"><button class="chip" data-act="schedmode" data-v="titration" aria-pressed="${sm === "titration"}">Titration schedule</button><button class="chip" data-act="schedmode" data-v="stable" aria-pressed="${sm === "stable"}">Stable schedule</button></div>
+    ${ORDER.map(id => { const tk = S.trackers[id]; return `<div class="trk"><div class="trk-h"><div class="t"><b>${esc(TRACKERS[id].name)}</b><span class="small muted">${esc(TRACKERS[id].desc)}</span></div>
+      <label class="sw"><input type="checkbox" data-act="toggletrk" data-t="${id}" id="on-${id}" ${tk.on ? "checked" : ""} aria-label="Track ${esc(TRACKERS[id].name)}"><span></span></label></div>
+      ${tk.on ? schedControl(id, sm) : ""}</div>`; }).join("")}</section>`;
+
+  h += `<h2 class="sec">Alert levels</h2><section class="card stack">
+    <p class="small muted">The app highlights readings at or above these. Defaults follow the NICE home-monitoring threshold of 135/85. Use your prescriber's numbers if they gave you different ones.</p>
+    <div class="grid3"><div class="field"><label for="th-sys">Systolic</label><input type="number" id="th-sys" data-set="thresholds.sys" value="${S.thresholds.sys}" inputmode="numeric"></div>
+    <div class="field"><label for="th-dia">Diastolic</label><input type="number" id="th-dia" data-set="thresholds.dia" value="${S.thresholds.dia}" inputmode="numeric"></div>
+    <div class="field"><label for="th-p">Pulse</label><input type="number" id="th-p" data-set="thresholds.pulse" value="${S.thresholds.pulse}" inputmode="numeric"></div></div>
+    <div class="field"><label for="wu">Weight units</label><select id="wu" data-set="weightUnit"><option value="kg"${S.weightUnit === "kg" ? " selected" : ""}>Kilograms (kg)</option><option value="st"${S.weightUnit === "st" ? " selected" : ""}>Stones and pounds</option><option value="lb"${S.weightUnit === "lb" ? " selected" : ""}>Pounds (lb)</option></select></div></section>`;
+
+  h += `<h2 class="sec">Your data</h2><section class="card stack">
+    <p class="small">Everything is stored on this device only, in this browser. Nothing is sent anywhere unless you back it up yourself.</p>
+    <p class="small muted">${S.lastBackup ? `Last backup: ${fmtDate(S.lastBackup, true)} at ${fmtTime(S.lastBackup)}` : "Not backed up yet."} ${state.entries.length} entries stored.</p>
+    <p class="small muted"><b>Back up</b> opens your phone's share sheet, so you can save the file straight to Google Drive, Dropbox, OneDrive or Files. On a computer it downloads the file.</p>
+    <div class="btns"><button class="btn sm" data-act="backup">Back up now</button><button class="btn sm line" data-act="restore">Restore from backup</button><button class="btn sm line" data-act="copybackup">Copy backup as text</button><button class="btn sm line" data-act="csv">Export CSV</button></div>
+    <div class="btns"><button class="btn sm ghost" data-act="wipe">Delete all data</button></div></section>`;
+
+  h += `<h2 class="sec">Install on your phone</h2><section class="card stack small">
+    ${standalone ? `<p>Installed. It opens from your home screen and works offline.</p>` : `<p><b>iPhone (Safari):</b> tap Share, then Add to Home Screen.</p><p><b>Android (Chrome):</b> tap the ⋮ menu, then Install app or Add to Home screen.</p><p class="muted">Once installed it opens full screen and works with no signal.</p>`}</section>`;
+
+  h += `<h2 class="sec">About</h2><section class="card stack small muted">
+    <p>This app is a personal record. It does not give medical advice or replace your prescriber. If a reading worries you, contact your prescriber, GP or NHS 111. In an emergency call 999.</p>
+    <p>ASRS v1.1 questions © World Health Organization, used for self-monitoring. Weekly use here is a tracking adaptation; the original screener asks about the past 6 months.</p></section>`;
+  return `<div class="stack">${h}</div>`;
+}
+
+/* ===== sheets ===== */
+function openSheet(title, body, foot) {
+  const el = $("#sheet");
+  el.innerHTML = `<div class="overlay" data-act="closebg"><div class="panel" role="dialog" aria-modal="true" aria-label="${esc(title)}"><div class="panel-h"><h3>${esc(title)}</h3><button class="x" data-act="close" aria-label="Close">×</button></div><div class="panel-b">${body}</div>${foot ? `<div class="panel-f">${foot}</div>` : ""}</div></div>`;
+  el.hidden = false;
+  document.documentElement.style.overflow = "hidden";
+  setTimeout(() => { const f = el.querySelector(".panel-b input:not([type=radio]):not([type=hidden]), .panel-b select, .panel-b textarea"); if (f && !matchMedia("(pointer:coarse)").matches) f.focus(); }, 50);
+}
+function closeSheet() { $("#sheet").hidden = true; $("#sheet").innerHTML = ""; document.documentElement.style.overflow = ""; ui.sheetType = null; }
+function confirmBox(title, msg, ok = "Confirm", danger = false) {
+  return new Promise(res => {
+    const el = $("#confirm");
+    el.innerHTML = `<div class="overlay confirm"><div class="panel" role="alertdialog" aria-modal="true" aria-label="${esc(title)}"><div class="panel-h"><h3>${esc(title)}</h3></div><div class="panel-b"><p>${msg}</p></div><div class="panel-f"><button class="btn ghost" data-c="0">Cancel</button><button class="btn ${danger ? "danger" : ""}" data-c="1">${esc(ok)}</button></div></div></div>`;
+    el.hidden = false;
+    el.querySelector('[data-c="1"]').focus();
+    el.onclick = ev => { const b = ev.target.closest("[data-c]"); if (!b) return; el.hidden = true; el.innerHTML = ""; el.onclick = null; res(b.dataset.c === "1"); };
+  });
+}
+let toastT;
+function toast(msg) { const t = $("#toast"); t.textContent = msg; t.classList.add("on"); clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove("on"), 2800); }
+
+const seg = (name, opts, val, cls = "") => `<div class="seg ${cls}" role="radiogroup">${opts.map((o, i) => { const [v, l] = Array.isArray(o) ? o : [o, o]; const id = `${name}-${i}`; return `<input type="radio" name="${name}" id="${id}" value="${esc(v)}"${String(val) === String(v) ? " checked" : ""}><label for="${id}">${esc(l)}</label>`; }).join("")}</div>`;
+const scale = (name, label, val, lo, hi) => `<div class="field"><span class="lbl">${esc(label)}</span>${seg(name, Array.from({ length: 11 }, (_, i) => [i, i]), val, "scale")}<div class="scale-ends"><span>${esc(lo)}</span><span>${esc(hi)}</span></div></div>`;
+const whenField = ts => `<div class="field"><label for="f-ts">Date and time</label><input type="datetime-local" id="f-ts" name="ts" value="${toLocalInput(ts || Date.now())}"></div>`;
+const noteField = (v, label = "Notes (optional)", ph = "Anything that might explain the reading: caffeine, poor sleep, stressful day, illness, missed dose…") => `<div class="field"><label for="f-note">${label}</label><textarea id="f-note" name="note" placeholder="${esc(ph)}">${esc(v || "")}</textarea></div>`;
+
+function formBody(type, e) {
+  const d = (e && e.data) || {};
+  const titr = mode() === "titration";
+  const medLine = state.settings.meds.length ? `<div class="flag info small">Tagged with: <b style="display:inline">${esc(e ? e.meds || "no medication recorded" : medString())}</b>${!e && titr ? ` · <button type="button" class="toggle-link" data-act="dosechange">Dose changed?</button>` : ""}</div>` : "";
+  switch (type) {
+    case "bp": {
+      const r = d.readings || [];
+      const r1 = r[0] || [d.sys, d.dia, d.pulse], r2 = r[1] || [];
+      const trio = (n, v) => `<div class="grid3 big"><div class="field"><input type="number" inputmode="numeric" name="s${n}" id="f-s${n}" value="${v[0] ?? ""}" placeholder="120" aria-label="Systolic ${n}"><span class="unit">Systolic</span></div><div class="field"><input type="number" inputmode="numeric" name="d${n}" id="f-d${n}" value="${v[1] ?? ""}" placeholder="80" aria-label="Diastolic ${n}"><span class="unit">Diastolic</span></div><div class="field"><input type="number" inputmode="numeric" name="p${n}" id="f-p${n}" value="${v[2] ?? ""}" placeholder="70" aria-label="Pulse ${n}"><span class="unit">Pulse bpm</span></div></div>`;
+      return `${medLine}<div class="field"><span class="lbl">Reading 1 <span class="muted small">(mmHg)</span></span>${trio(1, r1)}</div>
+        <div class="field" id="r2wrap" ${r2.length ? "" : "hidden"}><span class="lbl">Reading 2 <span class="muted small">(1 minute later)</span></span>${trio(2, r2)}<p class="hint">The two readings are averaged.</p></div>
+        <button type="button" class="toggle-link" data-act="addr2" ${r2.length ? "hidden" : ""}>+ Add a second reading</button>
+        <div id="bpflag"></div>
+        <div class="grid2"><div class="field"><span class="lbl">Arm</span>${seg("arm", ["Left", "Right"], d.arm || "Left")}</div><div class="field"><span class="lbl">Position</span>${seg("pos", ["Seated", "Standing"], d.pos || "Seated")}</div></div>
+        ${whenField(e && e.ts)}${noteField(e && e.note)}
+        <p class="hint">For a reliable reading: sit for 5 minutes first, feet flat, arm supported at heart height, no caffeine or exercise in the previous 30 minutes.</p>`;
+    }
+    case "weight": {
+      const u = state.settings.weightUnit, kg = d.kg;
+      let inp;
+      if (u === "st") { const lb = kg ? kg * 2.20462 : null; const st = lb ? Math.floor(lb / 14) : ""; const rl = lb ? round1(lb - st * 14) : ""; inp = `<div class="grid2 big"><div class="field"><input type="number" inputmode="numeric" name="st" id="f-st" value="${st}" aria-label="Stones"><span class="unit">Stones</span></div><div class="field"><input type="number" inputmode="decimal" step="0.1" name="lb" id="f-lb" value="${rl}" aria-label="Pounds"><span class="unit">Pounds</span></div></div>`; }
+      else inp = `<div class="big field"><input type="number" inputmode="decimal" step="0.1" name="w" id="f-w" value="${kg ? (u === "lb" ? round1(kg * 2.20462) : round1(kg)) : ""}" aria-label="Weight"><span class="unit">${u === "lb" ? "Pounds" : "Kilograms"}</span></div>`;
+      return `${medLine}${inp}${whenField(e && e.ts)}${noteField(e && e.note, "Notes (optional)", "e.g. before breakfast, after a heavy weekend")}`;
+    }
+    case "wellbeing":
+      return `${scale("stress", "Stress today", d.stress, "0 · none", "10 · extreme")}${scale("mood", "Mood today", d.mood, "0 · very low", "10 · great")}
+        <div class="grid2"><div class="field"><label for="f-sh">Sleep last night (hours)</label><input type="number" step="0.5" inputmode="decimal" id="f-sh" name="sleepHours" value="${d.sleepHours ?? ""}"></div><div class="field"><label for="f-caf">Caffeine drinks</label><input type="number" inputmode="numeric" id="f-caf" name="caffeine" value="${d.caffeine ?? ""}"></div></div>
+        ${scale("sleepQuality", "Sleep quality", d.sleepQuality, "0 · awful", "10 · excellent")}
+        <div class="field"><span class="lbl">Appetite</span>${seg("appetite", ["Low", "Normal", "High"], d.appetite || "")}</div>
+        <div class="field"><label for="f-alc">Alcohol (units)</label><input type="number" inputmode="decimal" id="f-alc" name="alcohol" value="${d.alcohol ?? ""}"></div>
+        ${whenField(e && e.ts)}${noteField(e && e.note)}`;
+    case "sideeffects":
+      return `<p class="small muted">Rate anything you've noticed since your last check. Leave the rest as None.</p><div>${SIDE_EFFECTS.map((s, i) => `<div class="se-row"><span class="lbl">${esc(s)}</span>${seg("se" + i, SEV.map((l, v) => [v, l]), (d.se && d.se[s]) || 0)}</div>`).join("")}</div>
+        <div id="seflag"></div>${whenField(e && e.ts)}${noteField(e && e.note, "Anything else (optional)", "Other effects, when they happen, how long they last")}`;
+    case "asrs":
+      return `<p class="small muted">Thinking about <b>the past week</b>, choose the answer that best describes how you have felt and conducted yourself.</p>
+        ${ASRS_Q.map((q, i) => `<div class="q"><p>${i + 1}. ${esc(q)}</p>${seg("q" + i, ASRS_A.map((l, v) => [v, l]), d.answers ? d.answers[i] : "")}</div>`).join("")}
+        ${whenField(e && e.ts)}${noteField(e && e.note)}<p class="hint">ASRS v1.1 Part A, © World Health Organization.</p>`;
+    case "pgi":
+      return `<p class="lbl">Compared with how you were before starting medication, how would you describe your ADHD symptoms now?</p>
+        <div class="picker">${seg("score", PGI.map((l, i) => [i + 1, l]), d.score || "")}</div>${whenField(e && e.ts)}${noteField(e && e.note)}`;
+    case "functional":
+      return FUNC.map(([k, l]) => scale(k, l, d[k], "0 · very poor", "10 · very good")).join("") + whenField(e && e.ts) + noteField(e && e.note);
+    case "timing":
+      return `${medLine}<div class="grid3"><div class="field"><label for="f-tk">Taken</label><input type="time" id="f-tk" name="taken" value="${esc(d.taken || "")}"></div><div class="field"><label for="f-on">Working by</label><input type="time" id="f-on" name="onset" value="${esc(d.onset || "")}"></div><div class="field"><label for="f-off">Wore off</label><input type="time" id="f-off" name="wearoff" value="${esc(d.wearoff || "")}"></div></div>
+        <div class="field"><span class="lbl">Rebound as it wore off</span>${seg("rebound", ["None", "Mild", "Strong"], d.rebound || "None")}</div>
+        <div class="field"><span class="lbl">Dose taken</span>${seg("adherence", ["As prescribed", "Late", "Missed"], d.adherence || "As prescribed")}</div>
+        ${whenField(e && e.ts)}${noteField(e && e.note)}`;
+    case "note":
+      return `${whenField(e && e.ts)}${noteField(e && e.note, "Note", "e.g. Missed dose, started a cold, big work deadline, changed coffee habits")}`;
+    case "dose": case "mode":
+      return `<p>${esc(summary(e))}</p>${d.reason ? `<p class="small muted">${esc(d.reason)}</p>` : ""}${whenField(e && e.ts)}${noteField(e && e.note)}`;
+  }
+}
+
+function openForm(type, e) {
+  ui.sheetType = type;
+  const title = e ? `Edit ${typeName(type).toLowerCase()}` : (TRACKERS[type] ? TRACKERS[type].name : typeName(type));
+  openSheet(title, `<form id="f" novalidate>${formBody(type, e)}<p class="err" id="ferr" hidden></p></form>`,
+    `${e ? `<button class="btn ghost" data-act="delentry" data-id="${e.id}">Delete</button>` : `<button class="btn ghost" data-act="close">Cancel</button>`}<button class="btn" data-act="saveentry" data-t="${type}" ${e ? `data-id="${e.id}"` : ""}>Save</button>`);
+  if (type === "bp") bpLive();
+}
+function bpLive() {
+  const f = $("#f"); if (!f) return;
+  const v = k => num(f.elements[k] && f.elements[k].value);
+  const s = [v("s1"), v("s2")].filter(x => x), d = [v("d1"), v("d2")].filter(x => x), p = [v("p1"), v("p2")].filter(x => x);
+  $("#bpflag").innerHTML = s.length && d.length ? flagHTML(bpFlag(Math.max(...s), Math.max(...d), p.length ? Math.max(...p) : null)) : "";
+}
+
+function collect(type, f) {
+  const fd = new FormData(f), g = k => fd.get(k), err = m => { throw new Error(m); };
+  const n = k => { const x = num(g(k)); if (Number.isNaN(x)) err("Please enter numbers only."); return x; };
+  const ts = g("ts") ? new Date(g("ts")).getTime() : Date.now();
+  if (!Number.isFinite(ts)) err("Please check the date and time.");
+  let data = {};
+  switch (type) {
+    case "bp": {
+      const rs = [[n("s1"), n("d1"), n("p1")], [n("s2"), n("d2"), n("p2")]].filter(r => r[0] != null || r[1] != null);
+      if (!rs.length) err("Enter at least the systolic and diastolic numbers.");
+      for (const [s, d, p] of rs) {
+        if (s == null || d == null) err("Each reading needs both systolic and diastolic.");
+        if (s < 60 || s > 260 || d < 30 || d > 160) err("That reading looks out of range. Systolic is usually 90–180 and diastolic 50–110.");
+        if (s <= d) err("Systolic (the top number) should be higher than diastolic.");
+        if (p != null && (p < 30 || p > 220)) err("Pulse looks out of range. It's usually between 40 and 120.");
+      }
+      const ps = rs.map(r => r[2]).filter(x => x != null);
+      data = { sys: Math.round(avg(rs.map(r => r[0]))), dia: Math.round(avg(rs.map(r => r[1]))), pulse: ps.length ? Math.round(avg(ps)) : null, readings: rs, arm: g("arm"), pos: g("pos") };
+      break;
+    }
+    case "weight": {
+      const u = state.settings.weightUnit; let kg;
+      if (u === "st") { const st = n("st") || 0, lb = n("lb") || 0; kg = (st * 14 + lb) / 2.20462; }
+      else { const w = n("w"); if (w == null) err("Enter your weight."); kg = u === "lb" ? w / 2.20462 : w; }
+      if (!kg || kg < 25 || kg > 350) err("That weight looks out of range. Check the units in Settings.");
+      data = { kg: Math.round(kg * 100) / 100 }; break;
+    }
+    case "wellbeing":
+      ["stress", "mood", "sleepQuality"].forEach(k => { const x = g(k); data[k] = x == null ? null : Number(x); });
+      data.sleepHours = n("sleepHours"); data.caffeine = n("caffeine"); data.alcohol = n("alcohol"); data.appetite = g("appetite") || null;
+      if (Object.values(data).every(x => x == null)) err("Fill in at least one item.");
+      break;
+    case "sideeffects": data.se = {}; SIDE_EFFECTS.forEach((s, i) => data.se[s] = Number(g("se" + i) || 0)); break;
+    case "asrs": data.answers = ASRS_Q.map((_, i) => g("q" + i)); if (data.answers.some(a => a == null)) err("Please answer all six questions."); data.answers = data.answers.map(Number); break;
+    case "pgi": if (!g("score")) err("Choose one answer."); data.score = Number(g("score")); break;
+    case "functional": FUNC.forEach(([k]) => data[k] = g(k) == null ? null : Number(g(k))); if (FUNC.some(([k]) => data[k] == null)) err("Please rate all four areas."); break;
+    case "timing": ["taken", "onset", "wearoff", "rebound", "adherence"].forEach(k => data[k] = g(k) || ""); break;
+    case "note": if (!String(g("note") || "").trim()) err("Write a note first."); break;
+  }
+  return { ts, data, note: String(g("note") || "").trim() };
+}
+
+function saveEntry(type, id) {
+  const f = $("#f"), errEl = $("#ferr");
+  let r;
+  try { r = collect(type, f); } catch (ex) { errEl.textContent = ex.message; errEl.hidden = false; errEl.scrollIntoView({ block: "nearest" }); return; }
+  const existing = id && state.entries.find(e => e.id === id);
+  if (existing) { existing.ts = r.ts; existing.note = r.note; if (!["dose", "mode"].includes(type)) existing.data = r.data; }
+  else state.entries.push({ id: uid(), ts: r.ts, type, mode: mode(), meds: medString(), data: r.data, note: r.note });
+  closeSheet(); commit(); askPersist();
+  let msg = existing ? "Changes saved" : `${typeName(type)} saved`;
+  if (type === "bp") { const fl = bpFlag(r.data.sys, r.data.dia, r.data.pulse); if (fl) { setTimeout(() => openSheet(fl.title, flagHTML(fl) + `<p class="small muted">Saved as ${esc(summary({ type: "bp", data: r.data }))}.</p>`, `<button class="btn" data-act="close">OK</button>`), 50); return; } }
+  if (type === "sideeffects" && r.data.se["Chest pain"] > 0) { setTimeout(() => openSheet("Chest pain", `<div class="flag danger"><b>Don't wait for your review</b>Contact your prescriber or NHS 111 today about chest pain on ADHD medication. If it is severe, crushing, spreading to your arm or jaw, or comes with breathlessness, call 999.</div>`, `<button class="btn" data-act="close">OK</button>`), 50); return; }
+  toast(msg);
+}
+
+function openPicker() {
+  const en = enabled();
+  openSheet("What do you want to log?", `<div class="picker">${en.map(id => { const s = status(id); return `<button data-act="log" data-t="${id}"><span><b>${esc(TRACKERS[id].name)}</b><span>${esc(s.label)}</span></span><span aria-hidden="true">›</span></button>`; }).join("")}
+    <button data-act="log" data-t="note"><span><b>Note</b><span>Missed dose, illness, a big day…</span></span><span aria-hidden="true">›</span></button>
+    <button data-act="dosechange"><span><b>Medication change</b><span>New dose, new medicine or stopping one</span></span><span aria-hidden="true">›</span></button></div>
+    ${en.length < ORDER.length ? `<p class="small muted">More things to track (symptom questionnaire, side effects, sleep and stress) can be turned on in Settings.</p>` : ""}`);
+}
+
+function openMedForm(m) {
+  ui.sheetType = "med";
+  openSheet(m ? "Edit medication" : "Add medication", `<form id="f" novalidate>
+    <div class="field"><label for="m-name">Medicine</label><input type="text" id="m-name" name="name" value="${esc(m ? m.name : "")}" placeholder="e.g. Lisdexamfetamine (Elvanse), Methylphenidate XL" autocomplete="off"></div>
+    <div class="grid2"><div class="field"><label for="m-dose">Dose</label><input type="number" step="any" inputmode="decimal" id="m-dose" name="dose" value="${esc(m ? m.dose : "")}"></div>
+    <div class="field"><label for="m-unit">Unit</label><select id="m-unit" name="unit">${["mg", "mcg", "mL"].map(u => `<option${m && m.unit === u ? " selected" : ""}>${u}</option>`).join("")}</select></div></div>
+    <div class="field"><label for="m-when">When you take it (optional)</label><input type="text" id="m-when" name="timing" value="${esc(m ? m.timing : "")}" placeholder="e.g. Morning, 07:30"></div>
+    ${m ? `<div class="field"><label for="m-reason">If the dose changed, why? (optional)</label><input type="text" id="m-reason" name="reason" placeholder="e.g. Increase per titration plan"></div>` : `<div class="field"><label for="m-started">Started on</label><input type="date" id="m-started" name="started" value="${dayKey(Date.now())}"></div>`}
+    <p class="err" id="ferr" hidden></p></form>`,
+    `${m ? `<button class="btn ghost" data-act="stopmed" data-id="${m.id}">Stop medicine</button>` : `<button class="btn ghost" data-act="close">Cancel</button>`}<button class="btn" data-act="savemed" ${m ? `data-id="${m.id}"` : ""}>Save</button>`);
+}
+function saveMed(id) {
+  const f = $("#f"), fd = new FormData(f), errEl = $("#ferr");
+  const name = String(fd.get("name") || "").trim(), dose = Number(fd.get("dose")), unit = fd.get("unit"), timing = String(fd.get("timing") || "").trim();
+  if (!name || !(dose > 0)) { errEl.textContent = "Enter the medicine name and a dose above zero."; errEl.hidden = false; return; }
+  const S = state.settings;
+  if (id) {
+    const m = S.meds.find(x => x.id === id);
+    if (m.dose !== dose) state.entries.push({ id: uid(), ts: Date.now(), type: "dose", mode: mode(), meds: "", data: { medId: m.id, name, from: m.dose, to: dose, unit, reason: String(fd.get("reason") || "").trim() }, note: "" });
+    Object.assign(m, { name, dose, unit, timing });
+  } else {
+    const m = { id: uid(), name, dose, unit, timing }; S.meds.push(m);
+    const st = fd.get("started") ? fromDayKey(fd.get("started")) + 8 * 36e5 : Date.now();
+    state.entries.push({ id: uid(), ts: Math.min(st, Date.now()), type: "dose", mode: mode(), meds: "", data: { medId: m.id, name, from: 0, to: dose, unit, reason: "Started medication" }, note: "" });
+  }
+  S.lastDoseCheck = Date.now();
+  closeSheet(); commit(); toast("Medication saved");
+}
+function openDoseChange() {
+  const S = state.settings;
+  if (!S.meds.length) return openMedForm();
+  ui.sheetType = "dosechange";
+  openSheet("Record dose change", `<form id="f" novalidate>
+    <div class="field"><label for="dc-med">Medicine</label><select id="dc-med" name="med">${S.meds.map(m => `<option value="${m.id}">${esc(m.name)} (now ${esc(m.dose)} ${esc(m.unit)})</option>`).join("")}</select></div>
+    <div class="field"><label for="dc-dose">New dose</label><input type="number" step="any" inputmode="decimal" id="dc-dose" name="dose" value="${esc(S.meds[0].dose)}"></div>
+    <div class="field"><span class="lbl">Reason</span>${seg("reason", ["Increase per titration plan", "Reduced for side effects", "Not enough benefit", "Other"], "Increase per titration plan")}</div>
+    <div class="field"><label for="dc-date">Date of change</label><input type="date" id="dc-date" name="date" value="${dayKey(Date.now())}"></div>
+    ${noteField("", "Notes (optional)", "e.g. Agreed with prescriber on phone review")}
+    <p class="small muted">Adding a new medicine instead? <button type="button" class="toggle-link" data-act="addmed">Add medication</button></p>
+    <p class="err" id="ferr" hidden></p></form>`,
+    `<button class="btn ghost" data-act="close">Cancel</button><button class="btn" data-act="savedose">Save change</button>`);
+}
+function saveDose() {
+  const fd = new FormData($("#f")), S = state.settings, m = S.meds.find(x => x.id === fd.get("med")), to = Number(fd.get("dose"));
+  if (!(to > 0)) { $("#ferr").textContent = "Enter the new dose. To stop a medicine, edit it in Settings."; $("#ferr").hidden = false; return; }
+  if (to === m.dose) { $("#ferr").textContent = `That's the same as the current dose (${m.dose} ${m.unit}).`; $("#ferr").hidden = false; return; }
+  const day = fd.get("date") ? fromDayKey(fd.get("date")) : startOfDay(Date.now());
+  const ts = day === startOfDay(Date.now()) ? Date.now() : day + 8 * 36e5;
+  state.entries.push({ id: uid(), ts, type: "dose", mode: mode(), meds: "", data: { medId: m.id, name: m.name, from: m.dose, to, unit: m.unit, reason: fd.get("reason") }, note: String(fd.get("note") || "").trim() });
+  m.dose = to; S.lastDoseCheck = Date.now();
+  closeSheet(); commit(); toast(`${m.name} now ${to} ${m.unit}`);
+}
+
+/* ===== backup & export ===== */
+const stamp = () => dayKey(Date.now());
+function downloadBlob(blob, name) { const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = name; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 2000); }
+async function shareFile(text, base, kinds) {
+  for (const [ext, mime] of kinds) {
+    try {
+      const file = new File([text], `${base}.${ext}`, { type: mime });
+      if (navigator.canShare && navigator.canShare({ files: [file] })) { await navigator.share({ files: [file], title: file.name }); return "shared"; }
+    } catch (e) { if (e.name === "AbortError") return "cancelled"; }
+  }
+  downloadBlob(new Blob([text], { type: kinds[0][1] }), `${base}.${kinds[0][0]}`);
+  return "downloaded";
+}
+async function backup() {
+  if (state.settings.demo) { toast("This is example data. Start your own tracker first."); return; }
+  const payload = JSON.stringify({ app: "titration-tracker", exported: new Date().toISOString(), ...state }, null, 1);
+  const r = await shareFile(payload, `titration-tracker-backup-${stamp()}`, [["json", "application/json"], ["txt", "text/plain"]]);
+  if (r === "cancelled") return;
+  state.settings.lastBackup = Date.now(); commit();
+  toast(r === "shared" ? "Backup handed to the app you chose" : "Backup file downloaded");
+}
+function csvExport() {
+  const q = v => { const s = String(v ?? ""); return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s; };
+  const rows = [["date", "time", "type", "mode", "systolic", "diastolic", "pulse", "weight_kg", "score", "details", "medication", "note"]];
+  [...state.entries].sort((a, b) => a.ts - b.ts).forEach(e => {
+    const d = e.data || {};
+    rows.push([dayKey(e.ts), fmtTime(e.ts), typeName(e.type), e.mode, e.type === "bp" ? d.sys : "", e.type === "bp" ? d.dia : "", e.type === "bp" ? d.pulse ?? "" : "", e.type === "weight" ? d.kg : "", e.type === "asrs" ? asrsScore(d.answers) : e.type === "pgi" ? d.score : "", e.type === "note" ? "" : summary(e), e.meds, e.note]);
+  });
+  shareFile(rows.map(r => r.map(q).join(",")).join("\n"), `titration-tracker-${stamp()}`, [["csv", "text/csv"]]);
+}
+async function restoreText(text) {
+  let obj;
+  try { obj = JSON.parse(text); } catch (e) { toast("That file isn't a Titration Tracker backup."); return; }
+  if (!obj || !Array.isArray(obj.entries) || !obj.settings) { toast("That file isn't a Titration Tracker backup."); return; }
+  const ok = await confirmBox("Replace your data?", `This backup${obj.exported ? ` from ${esc(fmtDate(Date.parse(obj.exported), true))}` : ""} has ${obj.entries.length} entries. Everything currently in the app will be replaced.`, "Restore backup", true);
+  if (!ok) return;
+  state = normalise(obj); state.settings.demo = false; commit(); askPersist(); toast("Backup restored");
+}
+
+/* ===== events ===== */
+document.addEventListener("click", async ev => {
+  const tab = ev.target.closest(".tab");
+  if (tab) { ui.tab = tab.dataset.tab; render(); window.scrollTo(0, 0); return; }
+  const b = ev.target.closest("[data-act]");
+  if (!b) return;
+  const a = b.dataset.act, S = state.settings;
+  if (a === "closebg") { if (ev.target === b) closeSheet(); return; }
+  if (a === "toggletrk") return; // handled on change
+  switch (a) {
+    case "close": closeSheet(); break;
+    case "logpicker": openPicker(); break;
+    case "log": closeSheet(); openForm(b.dataset.t); break;
+    case "edit": { const e = state.entries.find(x => x.id === b.dataset.id); if (e) openForm(e.type, e); break; }
+    case "saveentry": saveEntry(b.dataset.t, b.dataset.id); break;
+    case "delentry": {
+      const e = state.entries.find(x => x.id === b.dataset.id);
+      if (await confirmBox("Delete this entry?", `${esc(typeName(e.type))} from ${esc(fmtDate(e.ts, true))}: ${esc(summary(e))}`, "Delete", true)) { state.entries = state.entries.filter(x => x.id !== e.id); closeSheet(); commit(); toast("Entry deleted"); }
+      break;
+    }
+    case "addr2": $("#r2wrap").hidden = false; b.hidden = true; $("#f-s2").focus(); break;
+    case "addmed": closeSheet(); openMedForm(); break;
+    case "editmed": openMedForm(S.meds.find(m => m.id === b.dataset.id)); break;
+    case "savemed": saveMed(b.dataset.id); break;
+    case "stopmed": {
+      const m = S.meds.find(x => x.id === b.dataset.id);
+      if (await confirmBox(`Stop ${m.name}?`, "It will be removed from your current medication and the change recorded in your history.", "Stop medicine", true)) {
+        state.entries.push({ id: uid(), ts: Date.now(), type: "dose", mode: mode(), meds: "", data: { medId: m.id, name: m.name, from: m.dose, to: 0, unit: m.unit, reason: "Stopped" }, note: "" });
+        S.meds = S.meds.filter(x => x.id !== m.id); closeSheet(); commit(); toast(`${m.name} stopped`);
+      }
+      break;
+    }
+    case "dosechange": closeSheet(); openDoseChange(); break;
+    case "savedose": saveDose(); break;
+    case "dosesame": S.lastDoseCheck = Date.now(); commit(); toast("Thanks. We'll ask again next week."); break;
+    case "hist": ui.hist = b.dataset.t; render(); break;
+    case "range": ui.range = Number(b.dataset.v); render(); break;
+    case "schedmode": ui.schedMode = b.dataset.v; render(); break;
+    case "schedday": {
+      const s = S.trackers[b.dataset.t][b.dataset.m], d = Number(b.dataset.d);
+      s.days = s.days.includes(d) ? s.days.filter(x => x !== d) : [...s.days, d]; commit(); break;
+    }
+    case "setmode": {
+      const v = b.dataset.v; if (v === S.mode) break;
+      const msg = v === "stable" ? "Stable mode switches to your stable schedule and stops asking about dose changes. Your history is kept. You can switch back any time." : "Titration mode switches back to the more frequent titration schedule and the weekly dose prompt. The titration start date will be set to today.";
+      if (await confirmBox(v === "stable" ? "Titration complete?" : "Start titrating again?", msg, v === "stable" ? "Switch to stable" : "Switch to titration")) {
+        state.entries.push({ id: uid(), ts: Date.now(), type: "mode", mode: v, meds: medString(), data: { from: S.mode, to: v }, note: "" });
+        S.mode = v; ui.schedMode = null;
+        if (v === "stable") S.stableSince = Date.now(); else { S.titrationStart = dayKey(Date.now()); S.lastDoseCheck = Date.now(); }
+        commit(); toast(v === "stable" ? "Now in stable mode" : "Now in titration mode");
+      }
+      break;
+    }
+    case "copy": {
+      const t = $("#" + b.dataset.src);
+      try { await navigator.clipboard.writeText(t.value); toast("Copied"); } catch (e) { t.focus(); t.select(); toast("Selected. Use your phone's Copy."); }
+      break;
+    }
+    case "csv": csvExport(); break;
+    case "backup": backup(); break;
+    case "copybackup": {
+      const payload = JSON.stringify({ app: "titration-tracker", exported: new Date().toISOString(), ...state });
+      openSheet("Backup as text", `<p class="small muted">Copy this and paste it into a note or email to yourself. To restore, use Restore and choose a file containing it, or paste it below on another device.</p><textarea class="copybox" id="bk" readonly>${esc(payload)}</textarea>`, `<button class="btn ghost" data-act="pastebackup">Paste to restore</button><button class="btn" data-act="copy" data-src="bk">Copy</button>`);
+      break;
+    }
+    case "pastebackup":
+      openSheet("Restore from text", `<p class="small muted">Paste the backup text below.</p><textarea class="copybox" id="pasted" placeholder="{&quot;app&quot;:&quot;titration-tracker&quot;…"></textarea>`, `<button class="btn ghost" data-act="close">Cancel</button><button class="btn" data-act="restorepasted">Restore</button>`);
+      break;
+    case "restorepasted": { const t = $("#pasted").value; closeSheet(); restoreText(t); break; }
+    case "restore": $("#restorefile").click(); break;
+    case "wipe":
+      if (await confirmBox("Delete all data?", "Every reading, note and setting on this device will be erased. This can't be undone. Back up first if you might want it later.", "Delete everything", true)) {
+        state = normalise({}); commit(); ui.tab = "today"; render(); toast("All data deleted");
+      }
+      break;
+    case "startfresh":
+      if (await confirmBox("Start your own tracker?", "The example data will be cleared. Next, add your medication and choose how often to measure.", "Clear examples")) {
+        state = normalise({}); ui.tab = "settings"; commit(); window.scrollTo(0, 0); setTimeout(() => openMedForm(), 100);
+      }
+      break;
+  }
+});
+document.addEventListener("change", ev => {
+  const t = ev.target, S = state.settings;
+  if (t.dataset.act === "toggletrk") { S.trackers[t.dataset.t].on = t.checked; commit(); return; }
+  if (t.dataset.sched) {
+    const s = S.trackers[t.dataset.sched][t.dataset.m];
+    if (t.dataset.f === "kind") s.kind = t.value;
+    else { const max = s.kind === "perWeek" ? 7 : 31; s.n = Math.max(1, Math.min(max, Math.round(Number(t.value) || 1))); }
+    commit(); return;
+  }
+  if (t.dataset.set) {
+    const path = t.dataset.set.split(".");
+    let v = t.value;
+    if (path[0] === "thresholds") { v = Number(v); if (!(v > 0)) { render(); return; } }
+    if (path[0] === "titrationStart" && !v) { render(); return; }
+    let o = S; for (let i = 0; i < path.length - 1; i++) o = o[path[i]];
+    o[path[path.length - 1]] = v; commit(); return;
+  }
+  if (t.id === "restorefile" && t.files[0]) { const fr = new FileReader(); fr.onload = () => restoreText(fr.result); fr.readAsText(t.files[0]); t.value = ""; }
+});
+document.addEventListener("input", ev => { if (ui.sheetType === "bp" && ev.target.closest("#f")) bpLive(); });
+document.addEventListener("keydown", ev => { if (ev.key === "Escape" && !$("#sheet").hidden && $("#confirm").hidden) closeSheet(); });
+
+/* ===== boot ===== */
+(async function boot() {
+  await Store.init();
+  const saved = await Store.load();
+  state = saved ? normalise(saved) : demoState();
+  if (!saved) Store.save(JSON.parse(JSON.stringify(state)));
+  render();
+  if ("serviceWorker" in navigator && /^https:|^http:\/\/localhost/.test(location.href) && window.TT_STANDALONE) {
+    try { navigator.serviceWorker.register("sw.js"); } catch (e) {}
+  }
+})();
+</script>
+
+</body>
+</html>
