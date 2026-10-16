@@ -30,8 +30,9 @@
   --f-display:"Bricolage Grotesque", "Avenir Next", "Segoe UI", system-ui, sans-serif;
   --f-body:"IBM Plex Sans", -apple-system, "Segoe UI", Roboto, system-ui, sans-serif;
   --f-mono:"IBM Plex Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
-  --r:14px;
+  --r:14px; --host-bottom:0px;
 }
+html.badge-host{--host-bottom:52px}
 @media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
   --paper:#0E121B; --card:#171D2A; --ink:#E5E8EF; --muted:#9AA3B6; --line:#2A3245; --soft:#20283A;
   --accent:#8C9BF2; --accent-ink:#0E121B; --accent-soft:#232C4D;
@@ -63,7 +64,7 @@ button,input,select,textarea{font:inherit;color:inherit}
 .pill{display:inline-flex;align-items:center;gap:6px;font:600 12px/1 var(--f-body);padding:6px 10px;border-radius:99px;background:var(--mode-soft);color:var(--mode);white-space:nowrap}
 .pill::before{content:"";width:7px;height:7px;border-radius:50%;background:currentColor}
 
-main{padding-block:16px 110px}
+main{padding-block:16px calc(110px + var(--host-bottom))}
 .stack{display:flex;flex-direction:column;gap:14px}
 h2.sec{font:600 11px/1 var(--f-body);letter-spacing:.09em;text-transform:uppercase;color:var(--muted);margin:10px 0 0}
 .card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:14px 16px}
@@ -151,7 +152,7 @@ p{margin:0}
 .hitem[data-t="dose"],.hitem[data-t="mode"]{background:var(--mode-soft);border-color:transparent}
 
 /* nav */
-.tabs{position:fixed;left:0;right:0;bottom:0;z-index:6;background:var(--card);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom,0px)}
+.tabs{position:fixed;left:0;right:0;bottom:0;z-index:6;background:var(--card);border-top:1px solid var(--line);padding-bottom:calc(env(safe-area-inset-bottom,0px) + var(--host-bottom))}
 .tabs .wrap{display:grid;grid-template-columns:repeat(4,1fr)}
 .tab{background:none;border:0;padding:8px 4px 10px;display:flex;flex-direction:column;align-items:center;gap:3px;font-size:11px;font-weight:600;color:var(--muted);cursor:pointer}
 .tab svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
@@ -164,10 +165,11 @@ p{margin:0}
 .panel-h h3{flex:1;font:700 19px/1.2 var(--f-display);margin:0}
 .x{background:var(--soft);border:0;border-radius:50%;width:32px;height:32px;cursor:pointer;font-size:18px;line-height:1}
 .panel-b{overflow-y:auto;padding:14px max(16px,env(safe-area-inset-right,0px)) 14px max(16px,env(safe-area-inset-left,0px));display:flex;flex-direction:column;gap:16px}
-.panel-f{padding:12px max(16px,env(safe-area-inset-right,0px)) calc(12px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px));border-top:1px solid var(--line);display:flex;gap:8px;background:var(--card)}
+.panel-f{padding:12px max(16px,env(safe-area-inset-right,0px)) calc(12px + env(safe-area-inset-bottom,0px) + var(--host-bottom)) max(16px,env(safe-area-inset-left,0px));border-top:1px solid var(--line);display:flex;gap:8px;background:var(--card)}
 .panel-f .btn{flex:1}
 .confirm .panel{border-radius:18px;margin:16px;max-width:420px}
 .confirm.overlay{align-items:center}
+.confirm .panel-f{padding-bottom:12px}
 
 /* form */
 .field{display:flex;flex-direction:column;gap:6px;min-width:0}
@@ -228,7 +230,7 @@ textarea{min-height:70px;resize:vertical}
 .picker .seg label{text-align:left;padding:11px 14px;font-size:14px}
 .picker button span{font-size:13px;color:var(--muted)}
 
-#toast{position:fixed;left:50%;bottom:calc(84px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);z-index:30;background:var(--ink);color:var(--paper);padding:10px 16px;border-radius:10px;font-size:14px;font-weight:500;max-width:calc(100% - 32px);opacity:0;pointer-events:none;transition:opacity .2s}
+#toast{position:fixed;left:50%;bottom:calc(84px + env(safe-area-inset-bottom,0px) + var(--host-bottom));transform:translateX(-50%);z-index:30;background:var(--ink);color:var(--paper);padding:10px 16px;border-radius:10px;font-size:14px;font-weight:500;max-width:calc(100% - 32px);opacity:0;pointer-events:none;transition:opacity .2s}
 #toast.on{opacity:1}
 @media (prefers-reduced-motion: reduce){*{transition:none!important}}
 </style>
@@ -255,6 +257,8 @@ textarea{min-height:70px;resize:vertical}
 
 <script>
 "use strict";
+/* Free hosts that pin a badge to the bottom corner: keep a footer strip clear for it. */
+if (/\.netlify\.app$/i.test(location.hostname)) document.documentElement.classList.add("badge-host");
 /* ===== helpers ===== */
 const $ = (s, r = document) => r.querySelector(s);
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
