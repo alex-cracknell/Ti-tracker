@@ -308,7 +308,7 @@ const ASRS_Q = [
 const ASRS_A = ["Never", "Rarely", "Sometimes", "Often", "Very often"];
 const PGI = ["Very much improved", "Much improved", "Minimally improved", "No change", "Minimally worse", "Much worse", "Very much worse"];
 const FUNC = [["focus", "Focus and concentration"], ["tasks", "Getting tasks done"], ["emotions", "Emotional control"], ["relationships", "Relationships and home life"]];
-const SCHED_KINDS = [["off", "Off in this mode"], ["daily", "Every day"], ["weekdays", "On set days of the week"], ["perWeek", "Times per week"], ["perMonth", "Times per month"]];
+const SCHED_KINDS = [["off", "Off in this mode"], ["withBP", "When I take blood pressure"], ["daily", "Every day"], ["weekdays", "On set days of the week"], ["perWeek", "Times per week"], ["perMonth", "Times per month"]];
 
 const sched = (kind, n = 1, days = [1, 3, 5]) => ({ kind, n, days });
 function defaultSettings() {
@@ -368,7 +368,7 @@ const Store = {
 };
 
 let state = null;
-const ui = { tab: "today", hist: "all", range: 30, schedMode: null, sheetType: null };
+const ui = { tab: "today", hist: "all", range: 30, schedMode: null, sheetType: null, chain: null };
 let saveTimer = null;
 function commit() {
   clearTimeout(saveTimer);
@@ -384,7 +384,7 @@ function demoState() {
   const start = startOfDay(Date.now()) - 42 * DAY;
   S.titrationStart = dayKey(start);
   ["wellbeing", "sideeffects", "asrs", "pgi"].forEach(k => S.trackers[k].on = true);
-  S.trackers.wellbeing.titration = sched("perWeek", 3);
+  S.trackers.wellbeing.titration = sched("withBP");
   const med = { id: uid(), name: "Lisdexamfetamine", dose: 70, unit: "mg", timing: "Morning, 07:30" };
   S.meds = [med];
   S.lastDoseCheck = start + 28 * DAY;
@@ -399,8 +399,8 @@ function demoState() {
       const sys = Math.round(120 + bump + rnd() * 9 - 4.5), dia = Math.round(76 + bump * .7 + rnd() * 6 - 3), pulse = Math.round(70 + bump * 1.7 + rnd() * 8 - 4);
       add(day + 10 * 36e5 + Math.round(rnd() * 40) * 6e4, "bp", { sys, dia, pulse, readings: [[sys, dia, pulse]], arm: "Left", pos: "Seated" }, d === 33 ? "Coffee about 30 min before" : "", dose);
     }
-    if ([2, 4, 6].includes(dow)) {
-      add(day + 21 * 36e5, "wellbeing", { stress: Math.round(3 + rnd() * 4), mood: Math.round(5 + d / 14 + rnd() * 2), sleepHours: round1(6 + rnd() * 2 - (dose === 70 ? .5 : 0)), sleepQuality: Math.round(5 + rnd() * 3), appetite: d > 10 ? "Low" : "Normal", caffeine: Math.round(1 + rnd() * 2), alcohol: dow === 6 ? 3 : 0 }, "", dose);
+    if ([1, 3, 5].includes(dow)) {
+      add(day + 10 * 36e5 + 50 * 6e4, "wellbeing", { stress: Math.round(3 + rnd() * 4), mood: Math.round(5 + d / 14 + rnd() * 2), sleepHours: round1(6 + rnd() * 2 - (dose === 70 ? .5 : 0)), sleepQuality: Math.round(5 + rnd() * 3), appetite: d > 10 ? "Low" : "Normal", caffeine: Math.round(1 + rnd() * 2), alcohol: dow === 6 ? 3 : 0 }, "", dose);
     }
     if (dow === 0) {
       const target = 17 - Math.min(9, Math.round(d / 4.5));
@@ -429,6 +429,12 @@ function status(id) {
   const loggedToday = list.some(e => dayKey(e.ts) === today);
   const last = list[list.length - 1] || null;
   if (s.kind === "off") return { s: "off", label: "Not scheduled in this mode", last };
+  if (s.kind === "withBP") {
+    const bpToday = state.entries.some(e => e.type === "bp" && dayKey(e.ts) === today);
+    if (loggedToday) return { s: "done", label: "Done today, with your BP reading", last };
+    if (bpToday) return { s: "due", label: "Not added to today's BP reading", last };
+    return { s: "later", label: "Asked when you log blood pressure", last };
+  }
   if (s.kind === "daily") return { s: loggedToday ? "done" : "due", label: loggedToday ? "Done today" : "Due today", last };
   if (s.kind === "weekdays") {
     const dow = new Date(now).getDay();
@@ -445,6 +451,7 @@ function status(id) {
 function schedText(s) {
   if (s.kind === "off") return "Off";
   if (s.kind === "daily") return "Every day";
+  if (s.kind === "withBP") return "With BP readings";
   if (s.kind === "weekdays") return s.days.length ? [1, 2, 3, 4, 5, 6, 0].filter(d => s.days.includes(d)).map(d => DOW[d]).join(", ") : "No days chosen";
   return `${s.n}× per ${s.kind === "perWeek" ? "week" : "month"}`;
 }
@@ -651,8 +658,9 @@ function report() {
 
 function schedControl(id, m) {
   const s = state.settings.trackers[id][m];
-  let h = `<div class="sched"><select data-sched="${id}" data-m="${m}" data-f="kind" aria-label="How often, ${esc(TRACKERS[id].name)}">${SCHED_KINDS.map(([v, l]) => `<option value="${v}"${s.kind === v ? " selected" : ""}>${l}</option>`).join("")}</select>`;
+  let h = `<div class="sched"><select data-sched="${id}" data-m="${m}" data-f="kind" aria-label="How often, ${esc(TRACKERS[id].name)}">${SCHED_KINDS.filter(([v]) => !(id === "bp" && v === "withBP")).map(([v, l]) => `<option value="${v}"${s.kind === v ? " selected" : ""}>${l}</option>`).join("")}</select>`;
   if (s.kind === "perWeek" || s.kind === "perMonth") h += `<input type="number" min="1" max="${s.kind === "perWeek" ? 7 : 31}" value="${s.n}" data-sched="${id}" data-m="${m}" data-f="n" aria-label="Number of times" id="n-${id}-${m}">`;
+  if (s.kind === "withBP") h += `<p class="hint" style="width:100%">${state.settings.trackers.bp.on ? "Opens straight after you save a blood pressure reading, with a Skip button." : "Turn on blood pressure tracking for this to appear."}</p>`;
   if (s.kind === "weekdays") h += `<div class="days">${[1, 2, 3, 4, 5, 6, 0].map(d => `<button data-act="schedday" data-t="${id}" data-m="${m}" data-d="${d}" aria-pressed="${s.days.includes(d)}">${DOW[d].slice(0, 2)}</button>`).join("")}</div>`;
   return h + `</div>`;
 }
@@ -722,7 +730,7 @@ function toast(msg) { const t = $("#toast"); t.textContent = msg; t.classList.ad
 
 const seg = (name, opts, val, cls = "") => `<div class="seg ${cls}" role="radiogroup">${opts.map((o, i) => { const [v, l] = Array.isArray(o) ? o : [o, o]; const id = `${name}-${i}`; return `<input type="radio" name="${name}" id="${id}" value="${esc(v)}"${String(val) === String(v) ? " checked" : ""}><label for="${id}">${esc(l)}</label>`; }).join("")}</div>`;
 const scale = (name, label, val, lo, hi) => `<div class="field"><span class="lbl">${esc(label)}</span>${seg(name, Array.from({ length: 11 }, (_, i) => [i, i]), val, "scale")}<div class="scale-ends"><span>${esc(lo)}</span><span>${esc(hi)}</span></div></div>`;
-const whenField = ts => `<div class="field"><label for="f-ts">Date and time</label><input type="datetime-local" id="f-ts" name="ts" value="${toLocalInput(ts || Date.now())}"></div>`;
+const whenField = ts => `<div class="field"><label for="f-ts">Date and time</label><input type="datetime-local" id="f-ts" name="ts" value="${toLocalInput(ts || (ui.chain && ui.chain.ts) || Date.now())}"></div>`;
 const noteField = (v, label = "Notes (optional)", ph = "Anything that might explain the reading: caffeine, poor sleep, stressful day, illness, missed dose…") => `<div class="field"><label for="f-note">${label}</label><textarea id="f-note" name="note" placeholder="${esc(ph)}">${esc(v || "")}</textarea></div>`;
 
 function formBody(type, e) {
@@ -782,9 +790,11 @@ function formBody(type, e) {
 
 function openForm(type, e) {
   ui.sheetType = type;
-  const title = e ? `Edit ${typeName(type).toLowerCase()}` : (TRACKERS[type] ? TRACKERS[type].name : typeName(type));
-  openSheet(title, `<form id="f" novalidate>${formBody(type, e)}<p class="err" id="ferr" hidden></p></form>`,
-    `${e ? `<button class="btn ghost" data-act="delentry" data-id="${e.id}">Delete</button>` : `<button class="btn ghost" data-act="close">Cancel</button>`}<button class="btn" data-act="saveentry" data-t="${type}" ${e ? `data-id="${e.id}"` : ""}>Save</button>`);
+  const chained = !e && ui.chain && type !== "bp";
+  const title = e ? `Edit ${typeName(type).toLowerCase()}` : (TRACKERS[type] ? TRACKERS[type].name : typeName(type)) + (chained && ui.chain.total > 1 ? ` (${ui.chain.total - ui.chain.queue.length} of ${ui.chain.total})` : "");
+  const lead = chained ? `<div class="flag info small">Adding to your blood pressure reading at ${fmtTime(ui.chain.ts)}. Skip anything you don't want to record today.</div>` : "";
+  openSheet(title, `${lead}<form id="f" novalidate>${formBody(type, e)}<p class="err" id="ferr" hidden></p></form>`,
+    `${e ? `<button class="btn ghost" data-act="delentry" data-id="${e.id}">Delete</button>` : chained ? `<button class="btn ghost" data-act="chainnext">Skip</button>` : `<button class="btn ghost" data-act="close">Cancel</button>`}<button class="btn" data-act="saveentry" data-t="${type}" ${e ? `data-id="${e.id}"` : ""}>Save</button>`);
   if (type === "bp") bpLive();
 }
 function bpLive() {
@@ -844,10 +854,23 @@ function saveEntry(type, id) {
   if (existing) { existing.ts = r.ts; existing.note = r.note; if (!["dose", "mode"].includes(type)) existing.data = r.data; }
   else state.entries.push({ id: uid(), ts: r.ts, type, mode: mode(), meds: medString(), data: r.data, note: r.note });
   closeSheet(); commit(); askPersist();
-  let msg = existing ? "Changes saved" : `${typeName(type)} saved`;
-  if (type === "bp") { const fl = bpFlag(r.data.sys, r.data.dia, r.data.pulse); if (fl) { setTimeout(() => openSheet(fl.title, flagHTML(fl) + `<p class="small muted">Saved as ${esc(summary({ type: "bp", data: r.data }))}.</p>`, `<button class="btn" data-act="close">OK</button>`), 50); return; } }
-  if (type === "sideeffects" && r.data.se["Chest pain"] > 0) { setTimeout(() => openSheet("Chest pain", `<div class="flag danger"><b>Don't wait for your review</b>Contact your prescriber or NHS 111 today about chest pain on ADHD medication. If it is severe, crushing, spreading to your arm or jaw, or comes with breathlessness, call 999.</div>`, `<button class="btn" data-act="close">OK</button>`), 50); return; }
-  toast(msg);
+  if (type === "bp" && !existing) {
+    const linked = enabled().filter(k => k !== "bp" && state.settings.trackers[k][mode()].kind === "withBP" && !state.entries.some(x => x.type === k && dayKey(x.ts) === dayKey(r.ts)));
+    ui.chain = linked.length ? { queue: linked, ts: r.ts, total: linked.length } : null;
+  }
+  const more = ui.chain && ui.chain.queue.length;
+  const goOn = more ? `<button class="btn" data-act="chainnext">Continue</button>` : `<button class="btn" data-act="close">OK</button>`;
+  let fl = null;
+  if (type === "bp") { const f = bpFlag(r.data.sys, r.data.dia, r.data.pulse); if (f) fl = [f.title, flagHTML(f) + `<p class="small muted">Saved as ${esc(summary({ type: "bp", data: r.data }))}.</p>`]; }
+  if (type === "sideeffects" && r.data.se["Chest pain"] > 0) fl = ["Chest pain", `<div class="flag danger"><b>Don't wait for your review</b>Contact your prescriber or NHS 111 today about chest pain on ADHD medication. If it is severe, crushing, spreading to your arm or jaw, or comes with breathlessness, call 999.</div>`];
+  if (fl) { setTimeout(() => openSheet(fl[0], fl[1], goOn), 50); return; }
+  toast(existing ? "Changes saved" : `${typeName(type)} saved`);
+  if (more) setTimeout(nextInChain, 50); else ui.chain = null;
+}
+function nextInChain() {
+  const c = ui.chain;
+  if (!c || !c.queue.length) { ui.chain = null; closeSheet(); return; }
+  openForm(c.queue.shift());
 }
 
 function openPicker() {
@@ -957,12 +980,13 @@ document.addEventListener("click", async ev => {
   const b = ev.target.closest("[data-act]");
   if (!b) return;
   const a = b.dataset.act, S = state.settings;
-  if (a === "closebg") { if (ev.target === b) closeSheet(); return; }
+  if (a === "closebg") { if (ev.target === b) { ui.chain = null; closeSheet(); } return; }
   if (a === "toggletrk") return; // handled on change
   switch (a) {
-    case "close": closeSheet(); break;
+    case "close": ui.chain = null; closeSheet(); break;
+    case "chainnext": nextInChain(); break;
     case "logpicker": openPicker(); break;
-    case "log": closeSheet(); openForm(b.dataset.t); break;
+    case "log": ui.chain = null; closeSheet(); openForm(b.dataset.t); break;
     case "edit": { const e = state.entries.find(x => x.id === b.dataset.id); if (e) openForm(e.type, e); break; }
     case "saveentry": saveEntry(b.dataset.t, b.dataset.id); break;
     case "delentry": {
@@ -1052,7 +1076,7 @@ document.addEventListener("change", ev => {
   if (t.id === "restorefile" && t.files[0]) { const fr = new FileReader(); fr.onload = () => restoreText(fr.result); fr.readAsText(t.files[0]); t.value = ""; }
 });
 document.addEventListener("input", ev => { if (ui.sheetType === "bp" && ev.target.closest("#f")) bpLive(); });
-document.addEventListener("keydown", ev => { if (ev.key === "Escape" && !$("#sheet").hidden && $("#confirm").hidden) closeSheet(); });
+document.addEventListener("keydown", ev => { if (ev.key === "Escape" && !$("#sheet").hidden && $("#confirm").hidden) { ui.chain = null; closeSheet(); } });
 
 /* ===== boot ===== */
 (async function boot() {
