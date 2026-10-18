@@ -193,6 +193,13 @@ textarea{min-height:70px;resize:vertical}
 .q{display:flex;flex-direction:column;gap:8px;padding:12px 0;border-top:1px solid var(--line)}
 .q p{font-weight:500}
 .err{color:var(--danger);font-size:14px;font-weight:500}
+.tfield{display:flex;flex-direction:column;gap:6px;min-width:0}
+.tfield .btn{min-height:32px;padding:4px 8px}
+.doseday{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:10px 0 12px}
+.doseday div{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:8px 10px;display:flex;flex-direction:column;gap:6px;min-width:0}
+.doseday .k{font:600 11px/1.2 var(--f-body);letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.doseday .v{font:600 18px/1.1 var(--f-mono);font-variant-numeric:tabular-nums}
+.doseday .btn{min-height:32px;padding:4px 8px}
 .toggle-link{background:none;border:0;color:var(--accent);font-weight:600;padding:0;cursor:pointer;text-align:left}
 
 /* settings */
@@ -422,12 +429,17 @@ function demoState() {
 const mode = () => state.settings.mode;
 const enabled = () => ORDER.filter(k => state.settings.trackers[k].on);
 const entriesOf = t => state.entries.filter(e => e.type === t).sort((a, b) => a.ts - b.ts);
+const nowHM = () => fmtTime(Date.now());
+/* Dose timing is filled in over the day: one entry per day, updated as you notice onset and wear-off. */
+const todayTiming = () => entriesOf("timing").filter(e => dayKey(e.ts) === dayKey(Date.now())).pop() || null;
+const timingOpen = e => !!e && e.data.adherence !== "Missed" && (!e.data.onset || !e.data.wearoff);
 function nextDay(days, dow) { for (let i = 1; i <= 7; i++) { const d = (dow + i) % 7; if (days.includes(d)) return i === 1 ? "tomorrow" : DOW[d]; } return "none set"; }
 function status(id) {
   const s = state.settings.trackers[id][mode()];
   const now = Date.now(), today = dayKey(now), list = entriesOf(id);
   const loggedToday = list.some(e => dayKey(e.ts) === today);
   const last = list[list.length - 1] || null;
+  if (id === "timing" && timingOpen(todayTiming())) { const d = todayTiming().data; return { s: "due", open: true, label: `Taken ${d.taken || "–"} · add ${!d.onset ? "when it starts working" : "when it wears off"}`, last }; }
   if (s.kind === "off") return { s: "off", label: "Not scheduled in this mode", last };
   if (s.kind === "withBP") {
     const bpToday = state.entries.some(e => e.type === "bp" && dayKey(e.ts) === today);
@@ -571,16 +583,36 @@ function viewToday() {
   const en = enabled();
   const rows = en.map(id => ({ id, st: status(id) })).sort((a, b) => ["due", "later", "done", "off"].indexOf(a.st.s) - ["due", "later", "done", "off"].indexOf(b.st.s));
   const nDue = rows.filter(r => r.st.s === "due").length;
+  h += doseDayCard();
   h += `<h2 class="sec">${nDue ? `${nDue} to do today` : "All caught up"} · ${fmtDay(Date.now())}</h2>`;
   h += rows.length ? `<div class="due">${rows.map(({ id, st }) => `<div class="drow" data-s="${st.s}"><span class="dot" aria-hidden="true"></span>
       <div class="t"><b>${esc(TRACKERS[id].name)}</b><span>${esc(st.label)}${st.last ? ` · last ${rel(st.last.ts)}` : ""}</span>${st.last && (id === "bp" || id === "weight") ? `<div class="last">${esc(summary(st.last))}</div>` : ""}</div>
-      <button class="btn sm ${st.s === "due" ? "" : "line"}" data-act="log" data-t="${id}">${st.s === "due" ? "Log" : "Add"}</button></div>`).join("")}</div>`
+      <button class="btn sm ${st.s === "due" ? "" : "line"}" data-act="log" data-t="${id}">${st.open ? "Update" : st.s === "due" ? "Log" : "Add"}</button></div>`).join("")}</div>`
     : `<div class="card"><p>Nothing is being tracked. Choose what to track in Settings.</p></div>`;
 
   if (!S.demo && state.entries.length >= 3 && (!S.lastBackup || Date.now() - S.lastBackup > 14 * DAY)) {
     h += `<section class="card"><h3>${S.lastBackup ? `Last backup ${rel(S.lastBackup)}` : "Not backed up yet"}</h3><p class="small muted" style="margin-bottom:10px">Your records only live on this phone. Save a copy to Google Drive, Dropbox or Files in case the phone is lost or the browser data is cleared.</p><button class="btn sm" data-act="backup">Back up now</button></section>`;
   }
   return `<div class="stack">${h}</div>`;
+}
+
+function doseDayCard() {
+  if (!state.settings.trackers.timing.on) return "";
+  const e = todayTiming(), st = status("timing");
+  if (!e && st.s !== "due") return "";
+  if (e && !timingOpen(e)) return "";
+  const d = e ? e.data : {};
+  const cell = (k, label, prev) => `<div><span class="k">${label}</span>${d[k] ? `<span class="v">${esc(d[k])}</span>` : `<button class="btn sm" data-act="timingmark" data-f="${k}" ${prev && !d[prev] ? "disabled" : ""}>Now</button>`}</div>`;
+  return `<section class="card"><h3>Today's dose timing</h3><p class="small muted">Tap Now as each thing happens. Times can be changed with Edit.</p>
+    <div class="doseday">${cell("taken", "Taken")}${cell("onset", "Working", "taken")}${cell("wearoff", "Wore off", "taken")}</div>
+    <div class="btns"><button class="btn sm line" data-act="log" data-t="timing">${e ? "Edit or add details" : "Enter times"}</button></div></section>`;
+}
+function timingMark(k) {
+  let e = todayTiming();
+  if (!e) { e = { id: uid(), ts: Date.now(), type: "timing", mode: mode(), meds: medString(), data: { taken: "", onset: "", wearoff: "", rebound: "None", adherence: "As prescribed" }, note: "" }; state.entries.push(e); }
+  e.data[k] = nowHM();
+  commit(); askPersist();
+  toast({ taken: "Dose time saved", onset: "Onset time saved", wearoff: "Wear-off time saved" }[k] + ` (${nowHM()})`);
 }
 
 function viewHistory() {
@@ -777,7 +809,9 @@ function formBody(type, e) {
     case "functional":
       return FUNC.map(([k, l]) => scale(k, l, d[k], "0 · very poor", "10 · very good")).join("") + whenField(e && e.ts) + noteField(e && e.note);
     case "timing":
-      return `${medLine}<div class="grid3"><div class="field"><label for="f-tk">Taken</label><input type="time" id="f-tk" name="taken" value="${esc(d.taken || "")}"></div><div class="field"><label for="f-on">Working by</label><input type="time" id="f-on" name="onset" value="${esc(d.onset || "")}"></div><div class="field"><label for="f-off">Wore off</label><input type="time" id="f-off" name="wearoff" value="${esc(d.wearoff || "")}"></div></div>
+      const tf = (k, id, label) => `<div class="tfield"><label class="lbl" for="${id}">${label}</label><input type="time" id="${id}" name="${k}" value="${esc(d[k] || "")}"><button type="button" class="btn sm ghost" data-act="nowtime" data-for="${id}">Now</button></div>`;
+      return `${medLine}<div class="grid3">${tf("taken", "f-tk", "Taken")}${tf("onset", "f-on", "Working by")}${tf("wearoff", "f-off", "Wore off")}</div>
+        <p class="hint">Fill in what you know now and save. You can come back to add when it starts working and wears off, from the Today screen or by tapping the entry in History.</p>
         <div class="field"><span class="lbl">Rebound as it wore off</span>${seg("rebound", ["None", "Mild", "Strong"], d.rebound || "None")}</div>
         <div class="field"><span class="lbl">Dose taken</span>${seg("adherence", ["As prescribed", "Late", "Missed"], d.adherence || "As prescribed")}</div>
         ${whenField(e && e.ts)}${noteField(e && e.note)}`;
@@ -789,6 +823,7 @@ function formBody(type, e) {
 }
 
 function openForm(type, e) {
+  if (type === "timing" && !e) e = todayTiming() || undefined;
   ui.sheetType = type;
   const chained = !e && ui.chain && type !== "bp";
   const title = e ? `Edit ${typeName(type).toLowerCase()}` : (TRACKERS[type] ? TRACKERS[type].name : typeName(type)) + (chained && ui.chain.total > 1 ? ` (${ui.chain.total - ui.chain.queue.length} of ${ui.chain.total})` : "");
@@ -864,7 +899,7 @@ function saveEntry(type, id) {
   if (type === "bp") { const f = bpFlag(r.data.sys, r.data.dia, r.data.pulse); if (f) fl = [f.title, flagHTML(f) + `<p class="small muted">Saved as ${esc(summary({ type: "bp", data: r.data }))}.</p>`]; }
   if (type === "sideeffects" && r.data.se["Chest pain"] > 0) fl = ["Chest pain", `<div class="flag danger"><b>Don't wait for your review</b>Contact your prescriber or NHS 111 today about chest pain on ADHD medication. If it is severe, crushing, spreading to your arm or jaw, or comes with breathlessness, call 999.</div>`];
   if (fl) { setTimeout(() => openSheet(fl[0], fl[1], goOn), 50); return; }
-  toast(existing ? "Changes saved" : `${typeName(type)} saved`);
+  toast(type === "timing" && (!r.data.onset || !r.data.wearoff) && r.data.adherence !== "Missed" ? "Saved. Add the other times from Today later." : existing ? "Changes saved" : `${typeName(type)} saved`);
   if (more) setTimeout(nextInChain, 50); else ui.chain = null;
 }
 function nextInChain() {
@@ -985,6 +1020,8 @@ document.addEventListener("click", async ev => {
   switch (a) {
     case "close": ui.chain = null; closeSheet(); break;
     case "chainnext": nextInChain(); break;
+    case "timingmark": timingMark(b.dataset.f); break;
+    case "nowtime": { const i = $("#" + b.dataset.for); if (i) i.value = nowHM(); break; }
     case "logpicker": openPicker(); break;
     case "log": ui.chain = null; closeSheet(); openForm(b.dataset.t); break;
     case "edit": { const e = state.entries.find(x => x.id === b.dataset.id); if (e) openForm(e.type, e); break; }

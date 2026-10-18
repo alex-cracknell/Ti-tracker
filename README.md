@@ -15,6 +15,8 @@ A small phone app for tracking blood pressure, pulse, weight and (optionally) sy
 | `manifest.webmanifest` | Lets phones install it to the home screen |
 | `sw.js` | Makes it work offline |
 | `icon-*.png`, `apple-touch-icon.png` | Home-screen icons |
+| `AGENTS.md`, `CLAUDE.md` | Instructions for AI assistants working on the app |
+| `dev/` | Test and preview tools. Not used by the app itself |
 
 ## Put it online (pick one, both free)
 
@@ -36,7 +38,7 @@ It has to be served over **https** for install and offline mode to work. Opening
 - **Android (Chrome):** open the link, tap **⋮ → Install app** (or Add to Home screen).
 
 ## Updating the app
-Edit `index.html`, then in `sw.js` change `VERSION = "tt-v1"` to `"tt-v2"` (and so on) and re-upload. Phones pick up the new version the next time the app is opened with a connection. Users' data is not affected.
+Edit `index.html`, then in `sw.js` change `VERSION` to the next number (e.g. `"tt-v4"` to `"tt-v5"`) and re-upload both. See AGENTS.md for the full checklist. Phones pick up the new version the next time the app is opened with a connection. Users' data is not affected.
 
 ## Things to know
 - **Back up regularly.** Clearing browser data, uninstalling the browser, or losing the phone deletes the records. The app reminds you every 14 days.
